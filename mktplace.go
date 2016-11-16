@@ -1,5 +1,5 @@
 /*
-Chain code for POC Project
+Chain code for Testing Blockchain
 */
 
 package main
