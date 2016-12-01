@@ -1438,7 +1438,8 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		*/
 		
 		//return nil, errors.New("Symbol")
-		err = stub.PutState("CurrentTransactionNumber",1)
+		stub.PutState("CurrentTransactionNumber",[]byte("1000"))
+		return nil, errors.New("Symbol")
 		q,err := strconv.Atoi(args[2])  // Quantity
 		if err != nil {
 			return nil, errors.New("Error while converting quantity to integer")
