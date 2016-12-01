@@ -1441,7 +1441,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		//return nil, errors.New("Symbol")
 		fmt.Printf("Symbol: Arguments %s", args[0]);
 		stub.PutState("Test",[]byte("1000"))
-		return nil, nil
+		return nil, errors.New("Invalid Number of Arguments")
 		}
 		fmt.Println("Invalid number of Arguments");
 		return nil, nil
