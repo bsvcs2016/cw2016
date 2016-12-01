@@ -1428,7 +1428,6 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 */
 func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	return nil, errors.New("Arguments ")
 	if len(args)== 8{
 		// Check if the Symbol Id already exists
 		_, err := stub.GetState(args[0])
