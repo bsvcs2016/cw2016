@@ -1497,7 +1497,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		// add Symbol ID to entity's Instrument List
 		err = updateInstrumentHistory(stub, x509Cert.Subject.CommonName, inst.Symbol)
 		if err != nil {
-			return nil, errors.New( "Error while updating trade history")
+			return nil, errors.New( "Error while updating Instrument History"+x509Cert.Subject.CommonName +" :"+inst.Symbol)
 		}	
 		
 		return []byte(inst.Symbol), nil
