@@ -218,7 +218,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
     if function == "init" {
         return t.Init(stub, "init", args)
     } else if function == "createIssue" {
-        return t.createIssue(stub, args)
+        return t.test(stub, args)
     } else if function == "requestForIssue" {
         return t.requestForIssue(stub, args)
     } else if function == "respondToIssue" { //Pass Response as well (Bank/Investor)
@@ -1439,7 +1439,7 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		
 		//return nil, errors.New("Symbol")
 		stub.PutState("CurrentTransactionNumber",[]byte("1000"))
-		return nil, errors.New("Symbol")
+		return nil, nil
 		q,err := strconv.Atoi(args[2])  // Quantity
 		if err != nil {
 			return nil, errors.New("Error while converting quantity to integer")
@@ -1507,4 +1507,10 @@ func (t *SimpleChaincode) getInstrument(stub shim.ChaincodeStubInterface, args [
 			return nil, errors.New("Error while getting Instrument info from ledger")
 		}
 		return instbyte, nil
+}
+
+
+func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+		stub.PutState("CurrentTransactionNumber",[]byte("1000"))
+		return nil, nil
 }
