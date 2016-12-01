@@ -1428,7 +1428,6 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 */
 func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	fmt.Printf("CREATE ISSUE: Arguments %s", len(args));
 	if len(args)== 8{
 		// Check if the Symbol Id already exists
 		/*_, err := stub.GetState(args[0])
@@ -1484,7 +1483,6 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		}
 		
 		b, err := json.Marshal(inst)
-		stub.PutState(inst.Symbol,b)
 		// write to ledger
 		if err == nil {
 			err = stub.PutState(inst.Symbol,b)
@@ -1495,9 +1493,9 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		} 
 		
 		// add Symbol ID to entity's Instrument List
-		err = updateInstrumentHistory(stub, x509Cert.Subject.CommonName, inst.Symbol)
+		err = updateInstrumentHistory(stub, x509Cert.Subject.CommonName,inst.Symbol)
 		if err != nil {
-			return nil, errors.New( "Error while updating Instrument History"+x509Cert.Subject.CommonName +" :"+inst.Symbol)
+			return nil, errors.New( "Error while updating Instrument History : Caller : "+x509Cert.Subject.CommonName+" :"+inst.Symbol)
 		}	
 		
 		return []byte(inst.Symbol), nil
@@ -1511,4 +1509,15 @@ func (t *SimpleChaincode) getInstrument(stub shim.ChaincodeStubInterface, args [
 			return nil, errors.New("Error while getting Instrument info from ledger")
 		}
 		return instbyte, nil
+}
+
+
+func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string, error) {
+
+	bytes, err := stub.GetCallerCertificate();
+	if err != nil { return "", errors.New("Couldn't retrieve caller certificate") }
+	x509Cert, err := x509.ParseCertificate(bytes);				// Extract Certificate from result of GetCallerCertificate						
+															if err != nil { return "", errors.New("Couldn't parse certificate")	}
+															
+	return x509Cert.Subject.CommonName, nil
 }
