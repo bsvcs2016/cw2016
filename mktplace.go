@@ -1430,11 +1430,13 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 	//Need all parameters for the Bond Instrument
 	if len(args)== 8{
 		// Check if the Symbol Id already exists
-		_, err := stub.GetState(args[0])
+		/*_, err := stub.GetState(args[0])
 		if err == nil {
 			return nil, errors.New("Instrument with this ID already Exists, Try a different Name")
 			
 		}
+		*/
+		
 		return nil, errors.New("Symbol")
 		q,err := strconv.Atoi(args[2])  // Quantity
 		if err != nil {
@@ -1476,6 +1478,7 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		}
 		
 		b, err := json.Marshal(inst)
+		stub.PutState(inst.Symbol,b)
 		fmt.Println(b)
 		fmt.Println(err)
 		// write to ledger
