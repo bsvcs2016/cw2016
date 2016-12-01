@@ -1428,7 +1428,7 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 */
 func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	if len(args)== 8{
+	//if len(args)== 8{
 		// Check if the Symbol Id already exists
 		/*_, err := stub.GetState(args[0])
 		if err == nil {
@@ -1437,7 +1437,7 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		}
 		*/
 		
-		return nil, errors.New("Symbol")
+		//return nil, errors.New("Symbol")
 		q,err := strconv.Atoi(args[2])  // Quantity
 		if err != nil {
 			return nil, errors.New("Error while converting quantity to integer")
@@ -1479,8 +1479,6 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		
 		b, err := json.Marshal(inst)
 		stub.PutState(inst.Symbol,b)
-		fmt.Println(b)
-		fmt.Println(err)
 		// write to ledger
 		if err == nil {
 			err = stub.PutState(inst.Symbol,b)
@@ -1497,7 +1495,7 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		}	
 		
 		return []byte(inst.Symbol), nil
-	}
+//	}
 	return nil, errors.New("Incorrect number of arguments")
 }
 
