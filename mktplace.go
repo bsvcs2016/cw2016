@@ -1497,7 +1497,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		}	
 		
 		return []byte(inst.Symbol), nil
-//	}
+	}
 	return nil, errors.New("Incorrect number of arguments")
 }
 
