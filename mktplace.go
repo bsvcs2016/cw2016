@@ -1426,7 +1426,7 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 		}		
 
 */
-func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
 	//if len(args)== 8{
 		// Check if the Symbol Id already exists
@@ -1438,8 +1438,6 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		*/
 		
 		//return nil, errors.New("Symbol")
-		stub.PutState("CurrentTransactionNumber",[]byte("1000"))
-		return nil, nil
 		q,err := strconv.Atoi(args[2])  // Quantity
 		if err != nil {
 			return nil, errors.New("Error while converting quantity to integer")
@@ -1507,10 +1505,4 @@ func (t *SimpleChaincode) getInstrument(stub shim.ChaincodeStubInterface, args [
 			return nil, errors.New("Error while getting Instrument info from ledger")
 		}
 		return instbyte, nil
-}
-
-
-func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-		stub.PutState("CurrentTransactionNumber",[]byte("1000"))
-		return nil, nil
 }
