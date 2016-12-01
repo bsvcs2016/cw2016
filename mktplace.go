@@ -1441,12 +1441,8 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		//return nil, errors.New("Symbol")
 		fmt.Printf("Symbol: Arguments %s", args[0]);
 		stub.PutState("Test",[]byte("1000"))
-		return nil, errors.New("Invalid Number of Arguments")
 		}
-		fmt.Println("Invalid number of Arguments");
-		return nil, nil
-		}
-		/*
+		
 		q,err := strconv.Atoi(args[2])  // Quantity
 		if err != nil {
 			return nil, errors.New("Error while converting quantity to integer")
@@ -1467,6 +1463,9 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 			return nil ,errors.New( "Error while getting caller certificate")
 			
 		}
+		return nil, nil
+		}
+		/*
 		// get client enrollmentID
 		x509Cert, err := x509.ParseCertificate(bytes);
 		if err != nil {
