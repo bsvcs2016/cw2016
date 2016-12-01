@@ -58,7 +58,7 @@ type Transaction struct{		// ledger transactions
 	InstrumentType string
 }
 
-const entity1 = "test_user0"
+const entity1 = "user_type1_0"
 const entity2 = "test_user1"
 const entity3 = "test_user2"
 const entity4 = "test_user3"
