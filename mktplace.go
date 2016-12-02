@@ -1568,7 +1568,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		
 		// convert to Instrument to JSON
 		inst := Instrument {
-		Symbol :args[0],
+		Symbol :args[1],
 		Coupon :args[2],
 		Quantity :q,
 		InstrumentPrice :p,
