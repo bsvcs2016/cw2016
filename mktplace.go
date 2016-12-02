@@ -322,7 +322,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
     if function == "init" {
         return t.Init(stub, "init", args)
     } else if function == "createIssue" {
-        return t.test(stub, caller, args)
+        return t.test(stub, args)
     } else if function == "requestForIssue" {
         return t.requestForIssue(stub, args)
     } else if function == "respondToIssue" { //Pass Response as well (Bank/Investor)
@@ -1530,33 +1530,35 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 		}		
 
 */
-func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, caller string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	if len(args)== 8{
+	if len(args)== 9{
+		caller := args[0]
 		// Check if the Symbol Id already exists
-		/*_, err := stub.GetState(args[0])
+		/*_, err := stub.GetState(args[1])
 		if err == nil {
 			return nil, errors.New("Instrument with this ID already Exists, Try a different Name")
 			
 		}
+		order 463601815
 		*/
 		
 		//return nil, errors.New("Symbol")
-		fmt.Printf("Symbol: Arguments %s", args[0]);
+		fmt.Printf("Symbol: Arguments %s", args[1]);
 		stub.PutState("Test",[]byte("1000"))
 		
 		
-		q,err := strconv.Atoi(args[2])  // Quantity
+		q,err := strconv.Atoi(args[3])  // Quantity
 		if err != nil {
 			return nil, errors.New("Error while converting quantity to integer")
 			 
 		}
-		r,err := strconv.ParseFloat(args[3],64)  // Rate
+		r,err := strconv.ParseFloat(args[4],64)  // Rate
 		if err != nil {
 			return nil,errors.New( "Error while converting quantity to integer")
 			
 		}
-		p,err := strconv.ParseFloat(args[4],64)  // Price
+		p,err := strconv.ParseFloat(args[5],64)  // Price
 		if err != nil {
 			return nil,errors.New( "Error while converting quantity to integer")
 			
@@ -1565,13 +1567,13 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, caller string, 
 		// convert to Instrument to JSON
 		inst := Instrument {
 		Symbol :args[0],
-		Coupon :args[1],
+		Coupon :args[2],
 		Quantity :q,
 		InstrumentPrice :p,
 		Rate :r,
-		SettlementDate :args[5],
-		IssueDate	:args[6],
-		Callable	:args[7],
+		SettlementDate :args[6],
+		IssueDate	:args[7],
+		Callable	:args[8],
 		}
 		
 		b, err := json.Marshal(inst)
