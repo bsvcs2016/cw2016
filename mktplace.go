@@ -61,14 +61,14 @@ type Transaction struct{		// ledger transactions
 }
 
 const entity1 = "user_type1_1"
-const entity2 = "user_type1_2"
-const entity3 = "user_type1_3"
-const entity4 = "user_type1_4"
-const entity5 = "user_type2_0"
-const entity6 = "user_type2_1"
-const entity7 = "user_type2_2"
-const entity8 = "user_type2_3"
-const entity9 = "user_type2_4"
+const entity2 = "issuer2"
+const entity3 = "issuer3"
+const entity4 = "issuer4"
+const entity5 = "issuer5"
+const entity6 = "issuer6"
+const entity7 = "issuer7"
+const entity8 = "issuer8"
+const entity9 = "issuer9"
 
 type SimpleChaincode struct {
 }
@@ -1252,7 +1252,7 @@ func updateInstrumentHistory(stub shim.ChaincodeStubInterface, entityID string, 
 	}
 	// add tradeID to history
 	entity.Instruments = append(entity.Instruments,issueID)
-	return errors.New("From UpdateInstrument"+string(entitybyte))
+
 	// write entity state to ledger
 	b, err := json.Marshal(entity)
 	if err == nil {
