@@ -8,6 +8,8 @@ import (
 	"crypto/x509"
 	"strings"
 	"time"
+	"encoding/pem"
+	"net/url"
 	
 )
 type Stock struct{
@@ -59,14 +61,14 @@ type Transaction struct{		// ledger transactions
 }
 
 const entity1 = "user_type1_1"
-const entity2 = "test_user1"
-const entity3 = "test_user2"
-const entity4 = "test_user3"
-const entity5 = "test_user4"
-const entity6 = "test_user5"
-const entity7 = "test_user6"
-const entity8 = "test_user7"
-const entity9 = "test_user8"
+const entity2 = "user_type1_2"
+const entity3 = "user_type1_3"
+const entity4 = "user_type1_4"
+const entity5 = "user_type2_0"
+const entity6 = "user_type2_1"
+const entity7 = "user_type2_2"
+const entity8 = "user_type2_3"
+const entity9 = "user_type2_4"
 
 type SimpleChaincode struct {
 }
@@ -213,12 +215,114 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
     return ctidByte, nil
 }
+
+
+//==============================================================================================================================
+//	 General Functions
+//==============================================================================================================================
+//	 get_ecert - Takes the name passed and calls out to the REST API for HyperLedger to retrieve the ecert
+//				 for that user. Returns the ecert as retrived including html encoding.
+//==============================================================================================================================
+func (t *SimpleChaincode) get_ecert(stub shim.ChaincodeStubInterface, name string) ([]byte, error) {
+
+	ecert, err := stub.GetState(name)
+
+	if err != nil { return nil, errors.New("Couldn't retrieve ecert for user " + name) }
+
+	return ecert, nil
+}
+
+//==============================================================================================================================
+//	 add_ecert - Adds a new ecert and user pair to the table of ecerts
+//==============================================================================================================================
+
+func (t *SimpleChaincode) add_ecert(stub shim.ChaincodeStubInterface, name string, ecert string) ([]byte, error) {
+
+
+	err := stub.PutState(name, []byte(ecert))
+
+	if err == nil {
+		return nil, errors.New("Error storing eCert for user " + name + " identity: " + ecert)
+	}
+
+	return nil, nil
+
+}
+
+//==============================================================================================================================
+//	 get_caller - Retrieves the username of the user who invoked the chaincode.
+//				  Returns the username as a string.
+//==============================================================================================================================
+
+func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string, error) {
+
+	bytes, err := stub.GetCallerCertificate();
+															if err != nil { return "", errors.New("Couldn't retrieve caller certificate") }
+	x509Cert, err := x509.ParseCertificate(bytes);				// Extract Certificate from result of GetCallerCertificate
+															if err != nil { return "", errors.New("Couldn't parse certificate")	}
+
+	return x509Cert.Subject.CommonName, nil
+}
+
+//==============================================================================================================================
+//	 check_affiliation - Takes an ecert as a string, decodes it to remove html encoding then parses it and checks the
+// 				  		certificates common name. The affiliation is stored as part of the common name.
+//==============================================================================================================================
+
+func (t *SimpleChaincode) check_affiliation(stub shim.ChaincodeStubInterface, cert string) (int, error) {
+
+
+	decodedCert, err := url.QueryUnescape(cert);    				// make % etc normal //
+
+															if err != nil { return -1, errors.New("Could not decode certificate") }
+
+	pem, _ := pem.Decode([]byte(decodedCert))           				// Make Plain text   //
+
+	x509Cert, err := x509.ParseCertificate(pem.Bytes);				// Extract Certificate from argument //
+
+													if err != nil { return -1, errors.New("Couldn't parse certificate")	}
+
+	cn := x509Cert.Subject.CommonName
+
+	res := strings.Split(cn,"\\")
+
+	affiliation, _ := strconv.Atoi(res[2])
+
+	return affiliation, nil
+
+}
+
+//==============================================================================================================================
+//	 get_caller_data - Calls the get_ecert and check_role functions and returns the ecert and role for the
+//					 name passed.
+//==============================================================================================================================
+
+func (t *SimpleChaincode) get_caller_data(stub shim.ChaincodeStubInterface) (string, int, error){
+
+	user, err := t.get_username(stub)
+																		if err != nil { return "", -1, err }
+
+	ecert, err := t.get_ecert(stub, user);
+																if err != nil { return "", -1, err }
+
+	affiliation, err := t.check_affiliation(stub,string(ecert));
+																		if err != nil { return "", -1, err }
+
+	return user, affiliation, nil
+}
+
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-    // Handle different functions
+    
+	caller, _ , err := t.get_caller_data(stub)
+	if err != nil {
+	 return nil, errors.New("Caller not identified")
+	 }
+	
+	// Handle different functions
     if function == "init" {
         return t.Init(stub, "init", args)
     } else if function == "createIssue" {
-        return t.test(stub, args)
+        return t.test(stub, caller, args)
     } else if function == "requestForIssue" {
         return t.requestForIssue(stub, args)
     } else if function == "respondToIssue" { //Pass Response as well (Bank/Investor)
@@ -1426,7 +1530,7 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 		}		
 
 */
-func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, caller string, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
 	if len(args)== 8{
 		// Check if the Symbol Id already exists
@@ -1457,19 +1561,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 			return nil,errors.New( "Error while converting quantity to integer")
 			
 		}
-		bytes, err := stub.GetCallerCertificate();
-		if err != nil {
-			return nil ,errors.New( "Error while getting caller certificate")
-			
-		}
 		
-		// get client enrollmentID
-		x509Cert, err := x509.ParseCertificate(bytes);
-		if err != nil {
-			return nil, errors.New( "Error while parsing caller certificate")
-			
-		}
-
 		// convert to Instrument to JSON
 		inst := Instrument {
 		Symbol :args[0],
@@ -1493,9 +1585,9 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		} 
 		
 		// add Symbol ID to entity's Instrument List
-		err = updateInstrumentHistory(stub, "user_type1_1",inst.Symbol)
+		err = updateInstrumentHistory(stub, caller,inst.Symbol)
 		if err != nil {
-			return nil, errors.New( "Error while updating Instrument History : Caller : "+x509Cert.Subject.CommonName+" :"+inst.Symbol)
+			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol)
 		}	
 		
 		return []byte(inst.Symbol), nil
@@ -1511,13 +1603,3 @@ func (t *SimpleChaincode) getInstrument(stub shim.ChaincodeStubInterface, args [
 		return instbyte, nil
 }
 
-
-func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string, error) {
-
-	bytes, err := stub.GetCallerCertificate();
-	if err != nil { return "", errors.New("Couldn't retrieve caller certificate") }
-	x509Cert, err := x509.ParseCertificate(bytes);				// Extract Certificate from result of GetCallerCertificate						
-															if err != nil { return "", errors.New("Couldn't parse certificate")	}
-															
-	return x509Cert.Subject.CommonName, nil
-}
