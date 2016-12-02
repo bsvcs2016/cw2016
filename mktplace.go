@@ -313,7 +313,7 @@ func (t *SimpleChaincode) get_caller_data(stub shim.ChaincodeStubInterface) (str
 
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
     
-	caller, _ , err := t.get_caller_data(stub)
+	caller, err := t.get_username(stub)
 	if err != nil {
 	 return nil, errors.New("Caller not identified"+ caller)
 	 }
