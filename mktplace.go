@@ -315,14 +315,14 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
     
 	caller, _ , err := t.get_caller_data(stub)
 	if err != nil {
-	 return nil, errors.New("Caller not identified")
+	 return nil, errors.New("Caller not identified"+ caller)
 	 }
 	
 	// Handle different functions
     if function == "init" {
         return t.Init(stub, "init", args)
     } else if function == "createIssue" {
-        return t.test(stub, caller, args)
+        return t.test(stub, args)
     } else if function == "requestForIssue" {
         return t.requestForIssue(stub, args)
     } else if function == "respondToIssue" { //Pass Response as well (Bank/Investor)
@@ -1530,7 +1530,7 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 		}		
 
 */
-func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, caller string, args []string) ([]byte, error) {
+func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface,  args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
 	if len(args)== 8{
 		// Check if the Symbol Id already exists
@@ -1585,9 +1585,9 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, caller string, 
 		} 
 		
 		// add Symbol ID to entity's Instrument List
-		err = updateInstrumentHistory(stub, caller,inst.Symbol)
+		err = updateInstrumentHistory(stub, "user_type1_1",inst.Symbol)
 		if err != nil {
-			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol)
+			return nil, errors.New( "Error while updating Instrument History : Caller : "+"user_type1_1"+" :"+inst.Symbol)
 		}	
 		
 		return []byte(inst.Symbol), nil
