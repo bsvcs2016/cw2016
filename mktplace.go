@@ -1533,7 +1533,7 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
 	if len(args)== 9{
-		caller := args[0]
+		//caller := args[0]
 		// Check if the Symbol Id already exists
 		/*_, err := stub.GetState(args[1])
 		if err == nil {
