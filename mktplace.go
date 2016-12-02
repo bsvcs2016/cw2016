@@ -1244,6 +1244,7 @@ func updateInstrumentHistory(stub shim.ChaincodeStubInterface, entityID string, 
 	if err != nil {
 		return errors.New("Error while getting entity info from ledger")
 	}
+	return errors.New("From UpdateInstrument"+string(entitybyte))
 	var entity Entity
 	err = json.Unmarshal(entitybyte, &entity)		
 	if err != nil {
@@ -1587,7 +1588,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		} 
 		
 		// add Symbol ID to entity's Instrument List
-		err = updateInstrumentHistory(stub, caller,inst.Symbol)
+		err = updateInstrumentHistory(stub, "user_type1_1",inst.Symbol)
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol)
 		}	
