@@ -1585,13 +1585,13 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 				
 			}
 		} 
-		
+		/*
 		// add Symbol ID to entity's Instrument List
 		err = updateInstrumentHistory(stub, caller,inst.Symbol)
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol)
 		}	
-		
+		*/
 		return []byte(inst.Symbol), nil
 	}
 	return nil, errors.New("Incorrect number of arguments")
