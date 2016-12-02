@@ -1252,9 +1252,9 @@ func updateInstrumentHistory(stub shim.ChaincodeStubInterface, entityID string, 
 	}
 	// add tradeID to history
 	entity.Instruments = append(entity.Instruments,issueID)
+	return errors.New("From UpdateInstrument"+string(entitybyte))
 	// write entity state to ledger
 	b, err := json.Marshal(entity)
-	return errors.New("From UpdateInstrument"+string(entitybyte))
 	if err == nil {
 		err = stub.PutState(entity.EntityID,b)
 	} else {
@@ -1591,8 +1591,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		// add Symbol ID to entity's Instrument List
 		err = updateInstrumentHistory(stub, caller,inst.Symbol)
 		if err != nil {
-			return nil, err
-			//errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbo)
+			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol+string(err))
 		}	
 		
 		return []byte(inst.Symbol), nil
