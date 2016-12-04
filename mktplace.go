@@ -93,7 +93,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	
 	client2:= Entity{		
-		EntityID: entity5,	  
+		EntityID: entity2,	  
 		EntityName:	"Issuer B",
 		EntityType: "Issuer",
 	}
@@ -105,7 +105,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	
 	bank1:= Entity{
-		EntityID: entity2,
+		EntityID: entity3,
 		EntityName:	"Bank A",
 		EntityType: "Bank",
 	}
@@ -116,7 +116,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, err
 	}
 	bank2:= Entity{
-		EntityID: entity3,
+		EntityID: entity4,
 		EntityName:	"Bank B",
 		EntityType: "Bank",
 	}
@@ -128,7 +128,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	
 	bank3:= Entity{
-		EntityID: entity6,
+		EntityID: entity5,
 		EntityName:	"Bank 3",
 		EntityType: "Bank",
 	}
@@ -140,7 +140,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	
 	bank4:= Entity{
-		EntityID: entity7,
+		EntityID: entity6,
 		EntityName:	"Bank 4",
 		EntityType: "Bank",
 	}
@@ -151,7 +151,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, err
 	}
 	regBody:= Entity{
-		EntityID: entity4,
+		EntityID: entity7,
 		EntityName:	"Regulatory Body",
 		EntityType: "RegBody",
 	}
@@ -468,7 +468,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		tradeID = tradeID + 1
 		
 		//For Each Bank create one Transaction to sent Request
-		for i := range args {
+		for i :=1; i <= len(args); i++ {
 		// get current Transaction number
 		ctidByte, err := stub.GetState("currentTransactionNum")
 		if(err != nil){
@@ -1568,7 +1568,7 @@ func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) 
 		
 		// convert to Instrument to JSON
 		inst := Instrument {
-		Symbol :args[1],
+		Symbol :args[0],
 		Coupon :args[2],
 		Quantity :q,
 		InstrumentPrice :p,
