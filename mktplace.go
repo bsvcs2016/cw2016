@@ -467,7 +467,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		
 		tradeID = tradeID + 1
 		
-		//For Each Bank create one Transaction to sent Request
+		//For Each Bank create one Transaction to send Request
 		for i :=1; i < len(args); i++ {
 		// get current Transaction number
 		ctidByte, err := stub.GetState("currentTransactionNum")
@@ -528,7 +528,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling trade data")
 			return nil, nil
 		}
-		
+		return nil, nil
 		// convert to Trade JSON
 		b, err = json.Marshal(tr)
 		// write to ledger
