@@ -442,7 +442,7 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 */
 func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	if len(args) >= 2{
+	if len(args) >= 3{
 		var transactionID , clientID string 
 		//get instrument detail
 		instbyte , err := stub.GetState(args[0])
@@ -468,7 +468,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		tradeID = tradeID + 1
 		
 		//For Each Bank create one Transaction to send Request
-		for i :=1; i < len(args); i++ {
+		for i :=2; i < len(args); i++ {
 		// get current Transaction number
 		ctidByte, err := stub.GetState("currentTransactionNum")
 		if(err != nil){
@@ -493,16 +493,16 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate")
 			return nil, nil
 		}
-
+		fmt.Println("x509Cert.Subject.CommonName :" +x509Cert.Subject.CommonName)
 		//TODO Create Instrument , Create Multiple Transactions with Each Bank as per selection in UI
 		//Transaction
 		trn := Transaction{
 		TransactionID: transactionID,
 		TradeID: "trade"+strconv.Itoa(tradeID),			// create new TradeID
 		TransactionType: "Request",
-		ClientID:	x509Cert.Subject.CommonName,	// enrollmentID
+		ClientID:	args[0],	// enrollmentID
 		BankID: args[i],
-		Symbol: args[0],						// based on input
+		Symbol: args[1],						// based on input
 		Quantity:	instr.Quantity,								// based on input
 		InstrumentPrice: instr.InstrumentPrice,
 		Rate: instr.Rate,
@@ -529,27 +529,31 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			return nil, nil
 		}
 		
-		// convert to Trade JSON
-		b, err = json.Marshal(tr)
-		// write to ledger
-		if err == nil {
-			err = stub.PutState(tr.TradeID,b)
-			if err != nil {
-				_ = updateTransactionStatus(stub, transactionID, "Error while writing Trade data to ledger")
-				return nil, nil
-			}
+		//Check if the Trade ID exists 
+		b, err = stub.GetState(tr.TradeID)
+		if err != nil {
+			// convert to Trade JSON
+			b, err = json.Marshal(tr)
+			// write to ledger
+			if err == nil {
+				err = stub.PutState(tr.TradeID,b)
+				if err != nil {
+					_ = updateTransactionStatus(stub, transactionID, "Error while writing Trade data to ledger")
+					return nil, nil
+				}
 		} else {
 			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling trade data")
 			return nil, nil
 		}
-		return nil, nil
+		}
+		
 		// update currentTransactionNum
 		err = stub.PutState("currentTransactionNum", []byte(strconv.Itoa(tid)))
 		if err != nil {
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating current transaction number")
 			return nil, nil
 		}
-
+		
 		// add Trade ID to entity's trade history
 		err = updateTradeHistory(stub, trn.BankID, trn.TradeID)
 		if err != nil {
