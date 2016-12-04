@@ -468,7 +468,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		tradeID = tradeID + 1
 		
 		//For Each Bank create one Transaction to sent Request
-		for i :=1; i <= len(args); i++ {
+		for i :=1; i < len(args); i++ {
 		// get current Transaction number
 		ctidByte, err := stub.GetState("currentTransactionNum")
 		if(err != nil){
@@ -501,7 +501,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		TradeID: "trade"+strconv.Itoa(tradeID),			// create new TradeID
 		TransactionType: "Request",
 		ClientID:	x509Cert.Subject.CommonName,	// enrollmentID
-		BankID: args[i+1],
+		BankID: args[i],
 		Symbol: args[0],						// based on input
 		Quantity:	instr.Quantity,								// based on input
 		InstrumentPrice: instr.InstrumentPrice,
