@@ -430,7 +430,8 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
     return nil, nil
 }
 // used by Client to send to Banks for new Issue.
-/*		arg 0	:	Symbol
+/*		arg 0 
+		arg 1	:	Symbol
 		arg 2	:	Quantity
 		b, err = json.Marshal(client)
 		if err == nil {
@@ -445,13 +446,13 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 	if len(args) >= 3{
 		var transactionID , clientID string 
 		//get instrument detail
-		instbyte , err := stub.GetState(args[0])
+		instbyte , err := stub.GetState(args[1])
 		var instr Instrument
 		err = json.Unmarshal(instbyte, &instr)
 		if(err != nil){
 			return nil, errors.New("Error while unmarshalling entity data")
 		}
-		
+		for i :=2; i <= len(args); i++ {
 		// get current Trade number
 		ctidByte,err := stub.GetState("currentTradeNum")
 		if err != nil {			
@@ -468,13 +469,13 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		tradeID = tradeID + 1
 		
 		//For Each Bank create one Transaction to send Request
-		for i :=2; i < len(args); i++ {
+		
 		// get current Transaction number
-		ctidByte, err := stub.GetState("currentTransactionNum")
-		if(err != nil){
+		ctidByte1,err1 := stub.GetState("currentTransactionNum")
+		if(err1 != nil){
 			return nil, errors.New("Error while getting currentTransactionNum from ledger")
 		}
-		tid,err := strconv.Atoi(string(ctidByte))
+		tid,err := strconv.Atoi(string(ctidByte1))
 		if(err != nil){
 			return nil, errors.New("Error while converting ctidByte to integer")
 		}
@@ -567,7 +568,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
 			return nil, nil
 		}	
-		}
+
 		// update currentTradeNum
 		err = stub.PutState("currentTradeNum", []byte(strconv.Itoa(tradeID)))
 		if err != nil {
@@ -581,7 +582,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
 			return nil, nil
 		}	
-		
+	 } //For loop
 		return []byte(transactionID), nil
 	}
 	return nil, errors.New("Incorrect number of arguments")
