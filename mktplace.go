@@ -528,7 +528,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling trade data")
 			return nil, nil
 		}
-		return nil, nil
+		
 		// convert to Trade JSON
 		b, err = json.Marshal(tr)
 		// write to ledger
@@ -542,7 +542,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling trade data")
 			return nil, nil
 		}
-		
+		return nil, nil
 		// update currentTransactionNum
 		err = stub.PutState("currentTransactionNum", []byte(strconv.Itoa(tid)))
 		if err != nil {
