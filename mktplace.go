@@ -450,7 +450,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		var instr Instrument
 		err = json.Unmarshal(instbyte, &instr)
 		if(err != nil){
-			return nil, errors.New("Error while unmarshalling entity data")
+			return nil, errors.New("Error while unmarshalling Instrument data:" +args[1])
 		}
 		for i :=2; i <= len(args); i++ {
 		// get current Trade number
