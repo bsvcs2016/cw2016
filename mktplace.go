@@ -444,7 +444,7 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
 	if len(args) >= 3{
-		var transactionID , clientID string 
+		var transactionID  string 
 		//get instrument detail
 		instbyte , err := stub.GetState(args[1])
 		var instr Instrument
@@ -452,7 +452,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		if(err != nil){
 			return nil, errors.New("Error while unmarshalling Instrument data:" +args[1])
 		}
-		for i :=2; i <= len(args); i++ {
+		for i :=2; i < len(args); i++ {
 		// get current Trade number
 		// get current Transaction number
 		
@@ -504,7 +504,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		TradeID: "trade"+strconv.Itoa(tradeID),			// create new TradeID
 		TransactionType: "Request",
 		ClientID:	args[0],	// enrollmentID
-		BankID: args[2],
+		BankID: args[i],
 		Symbol: args[1],						// based on input
 		Quantity:	instr.Quantity,								// based on input
 		InstrumentPrice: instr.InstrumentPrice,
@@ -517,7 +517,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		Symbol: trn.Symbol,
 		Quantity: trn.Quantity,
 		}
-		clientID = trn.ClientID
+		//clientID = trn.ClientID
 		// convert to Transaction to JSON
 		b, err := json.Marshal(trn)
 		// write to ledger
@@ -577,13 +577,6 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating current transaction number")
 			return nil, nil
 		}
-		
-		// add Trade ID to entity's trade history
-		err = updateTradeHistory(stub, clientID, strconv.Itoa(tradeID))
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
-			return nil, nil
-		}	
 		
 		err = updateInstrumentHistory(stub, trn.BankID, tr.Symbol)
 		if err != nil {
