@@ -746,7 +746,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 */
 //---------------------------------------------------------- consensus
 func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	if len(args)== 3 {
+	if len(args)== 4 {
 		caller := args[0]
 		ctidByte, err := stub.GetState("currentTransactionNum")
 		if err != nil {
@@ -861,7 +861,7 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 
 
 // check if trade has to be Executed or Cancelled
-		if strings.ToLower(args[2]) == "yes" {
+		if strings.ToLower(args[3]) == "yes" {
 			tExec := quote
 			if tExec.TradeID != tradeID {
 				_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")
