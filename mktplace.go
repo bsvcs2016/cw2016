@@ -14,7 +14,9 @@ import (
 )
 type Stock struct{
 	Symbol string
+	Client string
 	Quantity int
+	Commission float64
 }
 type Instrument struct{
 	Symbol string
@@ -26,7 +28,7 @@ type Instrument struct{
 	IssueDate	string
 	Callable	string
 	TradeID []string
-	QuantityPaid int
+	QuantityPublished int
 }
 type Entity struct{
 	EntityID string				// enrollmentID
@@ -744,8 +746,8 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 */
 //---------------------------------------------------------- consensus
 func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	if len(args)== 2 {
-		
+	if len(args)== 3 {
+		caller := args[0]
 		ctidByte, err := stub.GetState("currentTransactionNum")
 		if err != nil {
 			return nil, errors.New("Error while getting current Transaction Number from ledger")
@@ -757,8 +759,8 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 		tid = tid + 1
 		transactionID := "trans"+strconv.Itoa(tid)
 		
-		tradeID := args[0]
-		quoteId := args[1]
+		tradeID := args[1]
+		quoteId := args[2]
 		
 		// get client's enrollment id
 		bytes, err := stub.GetCallerCertificate();
@@ -768,7 +770,7 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 		}
 		x509Cert, err := x509.ParseCertificate(bytes);
 		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate")
+			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate :" + x509Cert.Subject.CommonName)
 			return nil, nil
 		}
 
@@ -801,13 +803,12 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 		TradeID: tradeID,							// based on input
 		TransactionType: "Execute",
 		//InstrumentType: quote.InstrumentType,				// get from quote transaction
-		ClientID: x509Cert.Subject.CommonName,		// get from quote transaction
+		ClientID: caller , //x509Cert.Subject.CommonName,		// get from quote transaction
 		BankID: quote.BankID,						// get from quote transaction
 		Symbol: quote.Symbol,				// get from quote transaction
 		Quantity:	quote.Quantity,					// get from quote transaction
 		InstrumentPrice: quote.InstrumentPrice,				// get from quote transaction
 		Rate: quote.Rate,					// get from quote transaction
-		SettlementDate: quote.SettlementDate,		// get from quote transaction
 		Status: "Success",
 		}
 
@@ -845,8 +846,6 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 			return nil, nil
 		}
 		
-	
-		//bankInstrumentType := t.InstrumentType
 		
 		bankbyte,err := stub.GetState(t.BankID)																										
 		if err != nil {
@@ -859,9 +858,118 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 			_ = updateTransactionStatus(stub, transactionID, "Error while unmarshalling bank data")
 			return nil, nil
 		}
-		//newInstrument = Instrument{Symbol: t.Symbol,Quantity: t.Quantity,InstrumentType: bankInstrumentType ,Rate: t.Rate ,SettlementDate: t.SettlementDate,InstrumentPrice: t.InstrumentPrice, EntityID: t.ClientID, TradeID:t.TradeID}
-		//bank.Instruments = append(bank.Instruments,newInstrument)
-		
+
+
+// check if trade has to be Executed or Cancelled
+		if strings.ToLower(args[2]) == "yes" {
+			tExec := quote
+			if tExec.TradeID != tradeID {
+				_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")
+				return nil, nil
+			}
+			
+			instByte, err := stub.GetState(tExec.Symbol)
+			if err != nil {
+				return nil, errors.New("Error pulling Instrument state")
+			}
+			var inst Instrument
+			err = json.Unmarshal(instByte, &inst)
+			if err != nil {
+				return nil, errors.New("Error unmarshalling Instrument state")
+			}
+
+			// check settlement date to see if instrument is still valid
+				
+				t := Transaction{
+				TransactionID: transactionID,
+				TradeID: tradeID,							// based on input
+				TransactionType: "Final",
+				//InstrumentType: tExec.InstrumentType,				// get from tradeExec transaction
+				ClientID: caller , //x509Cert.Subject.CommonName,		// get from tradeExec transaction
+				BankID: tExec.BankID,						// get from tradeExec transaction
+				Symbol: tExec.Symbol,				// get from tradeExec transaction
+				Quantity:	tExec.Quantity,					// get from tradeExec transaction
+				InstrumentPrice: tExec.InstrumentPrice,				// get from tradeExec transaction
+				Rate: tExec.Rate,					// get from tradeExec transaction
+				Status: "Success",
+				}
+				// convert to JSON
+				b1, err := json.Marshal(t)
+				// write to ledger
+				if err == nil {
+					err = stub.PutState(t.TransactionID,b1)
+					if err != nil {
+						_ = updateTransactionStatus(stub, transactionID, "Error while writing Response transaction to ledger")
+						return nil, nil
+					}
+				} else {
+					_ = updateTransactionStatus(stub, transactionID, "Error while marshalling transaction data")
+					return nil, nil
+				}
+				
+				// add stock to clients portfolio, check if stock already exists if yes increase quantity else create new stock entry 		
+				stockExistFlag := false
+				for i := 0; i< len(client.Portfolio); i++ {
+					if client.Portfolio[i].Symbol == t.Symbol && client.Portfolio[i].Client == t.BankID {
+						stockExistFlag = true
+						client.Portfolio[i].Quantity = client.Portfolio[i].Quantity - t.Quantity
+						if client.EntityType =="Issuer" {
+							client.Portfolio[i].Commission = float64(-client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+						}else {
+							client.Portfolio[i].Commission = float64(client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+						}
+						break
+					  }
+					}
+				// create new stock entry
+				if stockExistFlag == false {
+					newStock := Stock{Symbol: t.Symbol,Client: t.BankID, Quantity: t.Quantity, Commission: float64(-t.Quantity) * inst.InstrumentPrice *.001}
+					client.Portfolio = append(client.Portfolio,newStock)
+				}
+				// update banks stock data
+				stockExistFlag = false
+				for i := 0; i< len(bank.Portfolio); i++ {
+					if bank.Portfolio[i].Symbol == t.Symbol  && client.Portfolio[i].Client == t.ClientID {
+						stockExistFlag = true
+						bank.Portfolio[i].Quantity = bank.Portfolio[i].Quantity + t.Quantity
+						if bank.EntityType =="Investor" {
+						client.Portfolio[i].Commission = float64(-client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+						} else {
+						client.Portfolio[i].Commission = float64(client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+						}
+						break
+					}
+				}
+				
+				// create new stock entry
+				newStock := Stock{Symbol: t.Symbol,Client: t.ClientID, Quantity: t.Quantity, Commission : float64(t.Quantity) * inst.InstrumentPrice *.001}
+				bank.Portfolio = append(bank.Portfolio,newStock)
+
+				// updating trade state
+				err = updateTradeState(stub, t.TradeID, t.TransactionID,"Trade Executed")
+				if err != nil {
+					_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
+					return nil, nil
+				}
+				
+		} else {	// trade cancelled
+			_ = updateTransactionStatus(stub, transactionID, "")
+			// updating trade state
+			err = updateTradeState(stub, tradeID,"" ,"Trade Cancelled")
+			if err != nil {
+				_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
+				return nil, nil
+			}
+		}
+		// update client state
+		b, err = json.Marshal(client)
+		if err == nil {
+			err = stub.PutState(client.EntityID,b)
+		} else {
+			_ = updateTransactionStatus(stub, transactionID, "Error updating Client state")
+			return nil, nil
+		}
+		// update bank state
 		b, err = json.Marshal(bank)
 		if err == nil {
 			err = stub.PutState(bank.EntityID,b)
@@ -869,14 +977,13 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating Bank state")
 			return nil, nil
 		}
-		
-		// updating trade transaction history  and status
-		err = updateTradeState(stub, t.TradeID, t.TransactionID,"Trade Executed")
-		//TODO Create a Transaction with selected bank with a new TRADE ID and "Pending Allocation" Status
+		// update transaction number
+		err = stub.PutState("currentTransactionNum", []byte(strconv.Itoa(tid)))
 		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
+			_ = updateTransactionStatus(stub, transactionID, "Error while writing currentTransactionNum to ledger")
 			return nil, nil
-		}
+		}		
+	
 		return nil, nil
 	}
 	return nil, errors.New("Incorrect number of arguments")
@@ -885,9 +992,10 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 			arg 1	:	Yes/ No
 */
 func (t *SimpleChaincode) tradeSet(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	if len(args)== 2 {
-		tradeID := args[0]
-		//tExecId := args[1]
+	if len(args)== 3 {
+		caller := args[0]
+		tradeID := args[1]
+		//tExecId := args[2]
 		// get client's enrollment id
 		
 		ctidByte, err := stub.GetState("currentTransactionNum")
@@ -908,10 +1016,10 @@ func (t *SimpleChaincode) tradeSet(stub shim.ChaincodeStubInterface, args []stri
 		}
 		x509Cert, err := x509.ParseCertificate(bytes);
 		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate")
+			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate" +x509Cert.Subject.CommonName)
 			return nil, nil
 		}
-		clientID := x509Cert.Subject.CommonName
+		clientID := caller //x509Cert.Subject.CommonName
 		
 		// update client entity's instruments
 		clientbyte,err := stub.GetState(clientID)																												
@@ -995,34 +1103,31 @@ TODO*/
 		bank.Instruments = bank.Instruments[:(len(bank.Instruments)-1)]
 		*/
 		// check if trade has to be settled
-		if strings.ToLower(args[1]) == "yes" {
 			if tExec.TradeID != tradeID {
 				_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")
 				return nil, nil
 			}
 			
 			// check settlement date to see if instrument is still valid
-			if time.Now().Before(tExec.SettlementDate) {
 				
 				t := Transaction{
 				TransactionID: transactionID,
 				TradeID: tradeID,							// based on input
-				TransactionType: "Exercise",
+				TransactionType: "Final",
 				//InstrumentType: tExec.InstrumentType,				// get from tradeExec transaction
-				ClientID: x509Cert.Subject.CommonName,		// get from tradeExec transaction
+				ClientID: caller , //x509Cert.Subject.CommonName,		// get from tradeExec transaction
 				BankID: tExec.BankID,						// get from tradeExec transaction
 				Symbol: tExec.Symbol,				// get from tradeExec transaction
 				Quantity:	tExec.Quantity,					// get from tradeExec transaction
 				InstrumentPrice: tExec.InstrumentPrice,				// get from tradeExec transaction
 				Rate: tExec.Rate,					// get from tradeExec transaction
-				SettlementDate: tExec.SettlementDate,		// get from tradeExec transaction
 				Status: "Success",
 				}
 				// convert to JSON
-				b, err := json.Marshal(t)
+				b1, err := json.Marshal(t)
 				// write to ledger
 				if err == nil {
-					err = stub.PutState(t.TransactionID,b)
+					err = stub.PutState(t.TransactionID,b1)
 					if err != nil {
 						_ = updateTransactionStatus(stub, transactionID, "Error while writing Response transaction to ledger")
 						return nil, nil
@@ -1033,93 +1138,34 @@ TODO*/
 				}
 				
 				// add stock to clients portfolio, check if stock already exists if yes increase quantity else create new stock entry 		
-				stockExistFlag := false
+				//stockExistFlag := false
 				for i := 0; i< len(client.Portfolio); i++ {
-					if client.Portfolio[i].Symbol == t.Symbol {
-						stockExistFlag = true
-						if strings.ToLower(t.InstrumentType) == "call" {
-							client.Portfolio[i].Quantity = client.Portfolio[i].Quantity + t.Quantity
-						} else {	// Put instrument type
-							if client.Portfolio[i].Quantity >= t.Quantity {
-								client.Portfolio[i].Quantity = client.Portfolio[i].Quantity - t.Quantity
-							} else {
-								_ = updateTransactionStatus(stub, transactionID, "Error insufficient stock quantity to complete the transaction")
-								return nil, nil
-							}
-						}
+					if client.Portfolio[i].Symbol == t.Symbol && client.Portfolio[i].Client == t.BankID {
+						//stockExistFlag = true
+						client.Portfolio[i].Quantity = client.Portfolio[i].Quantity + t.Quantity
+						
 						break
+					  }
 					}
-				}
 				
-				if (strings.ToLower(t.InstrumentType) == "put") && (stockExistFlag == false) {
-					_ = updateTransactionStatus(stub, transactionID, "Error insufficient stock quantity to complete the transaction")
-					return nil, nil
-				}
-				
-				// create new stock entry
-				if stockExistFlag == false {
-					newStock := Stock{Symbol: t.Symbol,Quantity: t.Quantity}
-					client.Portfolio = append(client.Portfolio,newStock)
-				}
 				// update banks stock data
-				stockExistFlag = false
+				//stockExistFlag = false
 				for i := 0; i< len(bank.Portfolio); i++ {
-					if bank.Portfolio[i].Symbol == t.Symbol {
-						stockExistFlag = true
-						if strings.ToLower(t.InstrumentType) == "call" {
-								if bank.Portfolio[i].Quantity >= t.Quantity {
-									bank.Portfolio[i].Quantity = bank.Portfolio[i].Quantity - t.Quantity
-								} else {
-									_ = updateTransactionStatus(stub, transactionID, "Error insufficient stock quantity to complete the transaction")
-									return nil, nil
-								}
-						} else {
-							bank.Portfolio[i].Quantity = bank.Portfolio[i].Quantity + t.Quantity
-						}
+					if bank.Portfolio[i].Symbol == t.Symbol && client.Portfolio[i].Client == t.ClientID{
+						//stockExistFlag = true
+						bank.Portfolio[i].Quantity = bank.Portfolio[i].Quantity - t.Quantity
 						break
 					}
 				}
 				
-				if (strings.ToLower(t.InstrumentType) == "call") && (stockExistFlag == false) {
-					_ = updateTransactionStatus(stub, transactionID, "Error insufficient stock quantity to complete the transaction")
-					return nil, nil
-				}
-				
-				// create new stock entry
-				if  (strings.ToLower(t.InstrumentType) == "put") && (stockExistFlag == false) {
-					newStock := Stock{Symbol: t.Symbol,Quantity: t.Quantity}
-					bank.Portfolio = append(bank.Portfolio,newStock)
-				}				
-				
 				// updating trade state
-				err = updateTradeState(stub, t.TradeID, t.TransactionID,"Trade Exercised")
+				err = updateTradeState(stub, t.TradeID, t.TransactionID,"Trade Settled")
 				if err != nil {
 					_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
 					return nil, nil
 				}
 				
-			} else {	// trade expired
-				
-				
-				_ = updateTransactionStatus(stub, transactionID, "")
-				
-				// updating trade state
-				err = updateTradeState(stub, tradeID,"" ,"Trade Expired")
-				if err != nil {
-					_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
-					return nil, nil
-				}
-				
-			}
-		} else {	// trade cancelled
-			_ = updateTransactionStatus(stub, transactionID, "")
-			// updating trade state
-			err = updateTradeState(stub, tradeID,"" ,"Trade Cancelled")
-			if err != nil {
-				_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
-				return nil, nil
-			}
-		}
+
 		// update client state
 		b, err := json.Marshal(client)
 		if err == nil {
