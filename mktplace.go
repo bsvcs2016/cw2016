@@ -587,18 +587,16 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 	}
 	return nil, errors.New("Incorrect number of arguments")
 }
-/*			arg 0	:	TradeID
-			arg 1	:	RequestID(QuoteID)
-			arg 2	:	InstrumentPrice
-			arg 3	:	Rate
-			arg 4	:	SettlementDate Year
-			arg 5	:	SettlementDate Month
-			arg 6	:	SettlementDate Day
+/*			arg 0	:	Caller
+			arg 1	:	Trader Id
+			arg 2	:	RequestID(QuoteID)
+			arg 3	:	Quantity
 */
 func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	if len(args)== 7 {
-		tradeID := args[0]
-		quoteID := args[1]
+	if len(args)== 8 {
+		caller := args[0]
+		tradeID := args[1]
+		quoteID := args[2]
 		
 		ctidByte, err := stub.GetState("currentTransactionNum")
 		if(err != nil){
@@ -622,6 +620,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate")
 			return nil, nil
 		}		
+		fmt.Println("x509Cert"+x509Cert.Subject.CommonName)
 		// get information from requestForIssue transaction
 		rfqbyte,err := stub.GetState(quoteID)												
 		if err != nil {
@@ -640,27 +639,24 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			return nil, nil
 		}		
 		
-		// add trade to bank's trade history
-		err = updateTradeHistory(stub, x509Cert.Subject.CommonName, tradeID)
+		quantity , err := strconv.Atoi(args[3])
 		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
+			return nil, errors.New("Error in converting Quantity")
+		}
+		// check if required quantity is  under limit
+		instrumentByte,err := stub.GetState(rfq.Symbol)																											
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while getting Instrument info from ledger")
+			return nil, nil
+		}
+		var inst Instrument
+		err = json.Unmarshal(instrumentByte, &inst)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while unmarshalling Instrument data")
 			return nil, nil
 		}
 		
 		/*
-		//TODO check if required quantity is  under limit
-		bankbyte,err := stub.GetState(x509Cert.Subject.CommonName)																											
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while getting bank info from ledger")
-			return nil, nil
-		}
-		var bank Entity
-		err = json.Unmarshal(bankbyte, &bank)
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while unmarshalling bank data")
-			return nil, nil
-		}
-		stockAvailable := false
 		for i := 0; i< len(bank.Portfolio); i++ {
 			if bank.Portfolio[i].Symbol == rfq.Symbol {
 				if bank.Portfolio[i].Quantity >= rfq.Quantity {
@@ -669,51 +665,16 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 				}
 			}
 		}
-		if stockAvailable == false {
-			_ = updateTransactionStatus(stub, transactionID, "Error while converting ctidByte to integer")
-			return nil, nil
-			return nil, errors.New("ErrorCannot respond to quote due to insufficient stock quantity")
-		}
 		*/
-			
-		// get required data from input
-		price, err := strconv.ParseFloat(args[2], 64)
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error invalid instrument price")
-			return nil, nil
-		}
-		rate, err := strconv.ParseFloat(args[3], 64)
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error invalid stock rate")
-			return nil, nil
-		}
-		year, err := strconv.Atoi(args[4])
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error invalid Expiration date")
-			return nil, nil
-		}
-		var m int
-		m, err = strconv.Atoi(args[5])
-		var month time.Month = time.Month(m)
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error invalid Expiration date")
-			return nil, nil
-		}
-		day, err := strconv.Atoi(args[6])
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error invalid Expiration date")
-			return nil, nil
-		}
-		settlementDate := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 		
-		// check if settlement date is greater than current date
-		if settlementDate.Before(time.Now()) {
-			_ = updateTransactionStatus(stub, transactionID, "Error cannot respond to quote due to incorrect Expiration date")
+		if quantity >inst.Quantity {
+		 return nil, errors.New("Response Quantity should be less or equal to requested")
 		}
-
-		entityByte, err := stub.GetState(x509Cert.Subject.CommonName)
-		if err == nil {
-			return []byte("Instrument with this ID already Exists, Try a different Name"), nil
+		
+			
+		entityByte, err := stub.GetState(caller)
+		if err != nil {
+			return nil,errors.New("Instrument with this ID already Exists, Try a different Name")
 			
 		}
 		var entity Entity
@@ -728,12 +689,12 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		TransactionType: "Response",
 		//InstrumentType: rfq.InstrumentType,														// get from rfq
 		ClientID:	rfq.ClientID,														// get from rfq
-		BankID: x509Cert.Subject.CommonName,											// enrollmentID
+		BankID: caller,  //x509Cert.Subject.CommonName,											// enrollmentID
 		Symbol: rfq.Symbol,													// get from rfq
-		Quantity:	rfq.Quantity,														// get from rfq
-		InstrumentPrice: price,																// based on input
-		Rate: rate,																// based on input
-		SettlementDate: time.Date(year, month, day, 0, 0, 0, 0, time.UTC),				// based on input
+		Quantity:	quantity,														// get from rfq
+		InstrumentPrice: rfq.InstrumentPrice,																// based on input
+		Rate: rfq.Rate,																// based on input
+		//SettlementDate: time.Date(year, month, day, 0, 0, 0, 0, time.UTC),				// based on input
 		Status: "Success",
 		}
 
