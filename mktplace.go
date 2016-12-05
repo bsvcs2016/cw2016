@@ -775,13 +775,14 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate :" + x509Cert.Subject.CommonName)
 			return nil, nil
 		}
-		fmt.Println("Current x509Cert No :"+x509Cert.Subject.CommonName)
+		fmt.Println("Current x509Cert No :"+x509Cert.Subject.CommonName + quoteId)
 		// get information from selected quote
 		quotebyte,err := stub.GetState(quoteId)
 		if err != nil {
 			_ = updateTransactionStatus(stub, transactionID, "Error while getting quote data")
 			return nil, nil
 		}
+		fmt.Println("Quote  Id   :"+string(quotebyte))
 		var quote Transaction
 		err = json.Unmarshal(quotebyte, &quote)		
 		if err != nil {
