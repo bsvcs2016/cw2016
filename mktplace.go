@@ -667,6 +667,8 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		}
 		*/
 		
+		fmt.Println("Quantity Responded :" + args[3] )
+		fmt.Printf("Quantity Instrument :%g" ,inst.Quantity )
 		if quantity >inst.Quantity {
 		 return nil, errors.New("Response Quantity should be less or equal to requested")
 		}
