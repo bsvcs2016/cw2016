@@ -257,9 +257,10 @@ func (t *SimpleChaincode) add_ecert(stub shim.ChaincodeStubInterface, name strin
 func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string, error) {
 
 	bytes, err := stub.GetCallerCertificate();
-															if err != nil { return "", errors.New("Couldn't retrieve caller certificate") }
+	fmt.Println("Get Caller Certificate" +string(bytes))
+	if err != nil { return "", errors.New("Couldn't retrieve caller certificate") }
 	x509Cert, err := x509.ParseCertificate(bytes);				// Extract Certificate from result of GetCallerCertificate
-															if err != nil { return "", errors.New("Couldn't parse certificate")	}
+	if err != nil { return "", errors.New("Couldn't parse certificate")	}
 
 	return x509Cert.Subject.CommonName, nil
 }
@@ -418,13 +419,14 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 	
 	switch entity.EntityType {
 		case "RegBody":	return valAsbytes, nil
-		case "Client":	if tran.ClientID == x509Cert.Subject.CommonName {
+		case "Issuer":	if tran.ClientID == x509Cert.Subject.CommonName {
 							return valAsbytes, nil
 						}
-		case "Bank":	if tran.TransactionType == "Request" {
+		case "Bank":	if tran.BankID == x509Cert.Subject.CommonName {
 							return valAsbytes, nil
-						} else if tran.BankID == x509Cert.Subject.CommonName {
-							return valAsbytes, nil
+						}
+		case "Investor": if tran.ClientID == x509Cert.Subject.CommonName {
+						 return valAsbytes, nil
 						}
 	}
     return nil, nil
@@ -620,7 +622,10 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate")
 			return nil, nil
 		}		
-		fmt.Println("x509Cert"+x509Cert.Subject.CommonName)
+		fmt.Println("Respond to Issue : x509Cert"+x509Cert.Subject.CommonName)
+		caller1, err := t.get_username(stub)
+		fmt.Println("Respond to Issue : Caller1 :"+ caller1)
+		
 		// get information from requestForIssue transaction
 		rfqbyte,err := stub.GetState(quoteID)												
 		if err != nil {
@@ -638,6 +643,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")
 			return nil, nil
 		}		
+		fmt.Println("Respond to Issue : Quantity "+args[3])
 		
 		quantity , err := strconv.Atoi(args[3])
 		if err != nil {
@@ -649,12 +655,14 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			_ = updateTransactionStatus(stub, transactionID, "Error while getting Instrument info from ledger")
 			return nil, nil
 		}
+		fmt.Println("Respond to Issue : Instrument Bytes"+string(instrumentByte))
 		var inst Instrument
 		err = json.Unmarshal(instrumentByte, &inst)
 		if err != nil {
 			_ = updateTransactionStatus(stub, transactionID, "Error while unmarshalling Instrument data")
 			return nil, nil
 		}
+		fmt.Println("Respond to Issue : Instrument symbol"+inst.Symbol)
 		
 		/*
 		for i := 0; i< len(bank.Portfolio); i++ {
