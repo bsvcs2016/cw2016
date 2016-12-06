@@ -299,8 +299,8 @@ func (t *SimpleChaincode) get_caller_data(stub shim.ChaincodeStubInterface) (str
 
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
     
-	caller,caller_affiliation, err := t.get_caller_data(stub)
-	fmt.Println("Caller Detail " + caller+" :" +caller_affiliation + " :" +err.Error())
+	caller, err := t.get_username(stub)
+	fmt.Println("Caller Detail " + caller+" :"  +err.Error())
 	
 	// Handle different functions
     if function == "init" {
