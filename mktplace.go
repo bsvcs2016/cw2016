@@ -8,8 +8,8 @@ import (
 	"crypto/x509"
 	"strings"
 	"time"
-	"encoding/pem"
-	"net/url"
+	//"encoding/pem"
+	//"net/url"
 	
 )
 type Stock struct{
@@ -267,54 +267,40 @@ func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string
 // 				  		certificates common name. The affiliation is stored as part of the common name.
 //==============================================================================================================================
 
-func (t *SimpleChaincode) check_affiliation(stub shim.ChaincodeStubInterface, cert string) (int, error) {
-
-
-	decodedCert, err := url.QueryUnescape(cert);    				// make % etc normal //
-
-															if err != nil { return -1, errors.New("Could not decode certificate") }
-
-	pem, _ := pem.Decode([]byte(decodedCert))           				// Make Plain text   //
-
-	x509Cert, err := x509.ParseCertificate(pem.Bytes);				// Extract Certificate from argument //
-
-													if err != nil { return -1, errors.New("Couldn't parse certificate")	}
-
-	cn := x509Cert.Subject.CommonName
-
-	res := strings.Split(cn,"\\")
-
-	affiliation, _ := strconv.Atoi(res[2])
-
-	return affiliation, nil
+func (t *SimpleChaincode) check_affiliation(stub shim.ChaincodeStubInterface) (string, error) {
+    affiliation, err := stub.ReadCertAttribute("role");
+	if err != nil { return "", errors.New("Couldn't get attribute 'role'. Error: " + err.Error()) }
+	return string(affiliation), nil
 
 }
+
 
 //==============================================================================================================================
 //	 get_caller_data - Calls the get_ecert and check_role functions and returns the ecert and role for the
 //					 name passed.
 //==============================================================================================================================
 
-func (t *SimpleChaincode) get_caller_data(stub shim.ChaincodeStubInterface) (string, int, error){
+func (t *SimpleChaincode) get_caller_data(stub shim.ChaincodeStubInterface) (string, string, error){
 
 	user, err := t.get_username(stub)
-																		if err != nil { return "", -1, err }
 
-	ecert, err := t.get_ecert(stub, user);
-																if err != nil { return "", -1, err }
+    // if err != nil { return "", "", err }
 
-	affiliation, err := t.check_affiliation(stub,string(ecert));
-																		if err != nil { return "", -1, err }
+	// ecert, err := t.get_ecert(stub, user);
+
+    // if err != nil { return "", "", err }
+
+	affiliation, err := t.check_affiliation(stub);
+
+    if err != nil { return "", "", err }
 
 	return user, affiliation, nil
 }
 
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
     
-	caller, err := t.get_username(stub)
-	if err != nil {
-	 return nil, errors.New("Caller not identified"+ caller + " Error" + err.Error())
-	 }
+	caller,caller_affiliation, err := t.get_caller_data(stub)
+	fmt.Println("Caller Detail " + caller+" :" +caller_affiliation + " :" +err.Error())
 	
 	// Handle different functions
     if function == "init" {
