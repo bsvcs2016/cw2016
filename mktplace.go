@@ -258,7 +258,7 @@ func (t *SimpleChaincode) add_ecert(stub shim.ChaincodeStubInterface, name strin
 
 func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string, error) {
 
-    username, err := stub.ReadCertAttribute("username");
+    username, err := stub.ReadCertAttribute("enrollmentID");
 	if err != nil { return "", errors.New("Couldn't get attribute 'username'. Error: " + err.Error()) }
 	return string(username), nil
 }
@@ -268,7 +268,7 @@ func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string
 //==============================================================================================================================
 
 func (t *SimpleChaincode) check_affiliation(stub shim.ChaincodeStubInterface) (string, error) {
-    affiliation, err := stub.ReadCertAttribute("role");
+    affiliation, err := stub.ReadCertAttribute("enrollmentID");
 	if err != nil { return "", errors.New("Couldn't get attribute 'role'. Error: " + err.Error()) }
 	return string(affiliation), nil
 
@@ -1089,7 +1089,7 @@ TODO*/
 				for i := 0; i< len(client.Portfolio); i++ {
 					if client.Portfolio[i].Symbol == t.Symbol && client.Portfolio[i].Client == t.BankID {
 						//stockExistFlag = true
-						client.Portfolio[i].Quantity = client.Portfolio[i].Quantity + t.Quantity
+						client.Portfolio[i].Quantity = client.Portfolio[i].Quantity - t.Quantity
 						
 						break
 					  }
@@ -1100,7 +1100,7 @@ TODO*/
 				for i := 0; i< len(bank.Portfolio); i++ {
 					if bank.Portfolio[i].Symbol == t.Symbol && client.Portfolio[i].Client == t.ClientID{
 						//stockExistFlag = true
-						bank.Portfolio[i].Quantity = bank.Portfolio[i].Quantity - t.Quantity
+						bank.Portfolio[i].Quantity = bank.Portfolio[i].Quantity + t.Quantity
 						break
 					}
 				}
