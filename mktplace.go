@@ -258,16 +258,10 @@ func (t *SimpleChaincode) add_ecert(stub shim.ChaincodeStubInterface, name strin
 
 func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string, error) {
 
-	bytes, err := stub.GetCallerCertificate();
-	fmt.Println("Get Caller Certificate" +string(bytes))
-	if err != nil { return "", errors.New("Couldn't retrieve caller certificate") }
-	x509Cert, err := x509.ParseCertificate(bytes);				// Extract Certificate from result of GetCallerCertificate
-	fmt.Println(x509Cert)
-	if err != nil { return "", errors.New("Couldn't parse certificate")	}
-
-	return x509Cert.Subject.CommonName, nil
+    username, err := stub.ReadCertAttribute("username");
+	if err != nil { return "", errors.New("Couldn't get attribute 'username'. Error: " + err.Error()) }
+	return string(username), nil
 }
-
 //==============================================================================================================================
 //	 check_affiliation - Takes an ecert as a string, decodes it to remove html encoding then parses it and checks the
 // 				  		certificates common name. The affiliation is stored as part of the common name.
