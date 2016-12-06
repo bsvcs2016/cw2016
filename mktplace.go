@@ -262,6 +262,7 @@ func (t *SimpleChaincode) get_username(stub shim.ChaincodeStubInterface) (string
 	fmt.Println("Get Caller Certificate" +string(bytes))
 	if err != nil { return "", errors.New("Couldn't retrieve caller certificate") }
 	x509Cert, err := x509.ParseCertificate(bytes);				// Extract Certificate from result of GetCallerCertificate
+	fmt.Println(x509Cert)
 	if err != nil { return "", errors.New("Couldn't parse certificate")	}
 
 	return x509Cert.Subject.CommonName, nil
@@ -325,7 +326,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
     if function == "init" {
         return t.Init(stub, "init", args)
     } else if function == "createIssue" {
-        return t.test(stub, args)
+        return t.createIssue(stub, args)
     } else if function == "requestForIssue" {
         return t.requestForIssue(stub, args)
     } else if function == "respondToIssue" { //Pass Response as well (Bank/Investor)
@@ -789,7 +790,7 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 			_ = updateTransactionStatus(stub, transactionID, "Error while unmarshalling quote data")
 			return nil, nil
 		}
-		
+		fmt.Println("Trade  ID   :"+quote.TradeID +"-"+ tradeID)
 		if quote.TradeID != tradeID {
 			_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")	
 			return nil, nil
@@ -879,9 +880,9 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 				stockExistFlag = true
 				client.Portfolio[i].Quantity = client.Portfolio[i].Quantity - t.Quantity
 				if client.EntityType =="Issuer" {
-					client.Portfolio[i].Commission = float64(-client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+					client.Portfolio[i].Commission = client.Portfolio[i].Commission + float64(-t.Quantity) * inst.InstrumentPrice *.001
 				}else {
-					client.Portfolio[i].Commission = float64(client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+					client.Portfolio[i].Commission = client.Portfolio[i].Commission + float64(t.Quantity) * inst.InstrumentPrice *.001
 				}
 				break
 			  }
@@ -898,9 +899,9 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 						stockExistFlag = true
 						bank.Portfolio[i].Quantity = bank.Portfolio[i].Quantity + t.Quantity
 						if bank.EntityType =="Investor" {
-						client.Portfolio[i].Commission = float64(-client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+						client.Portfolio[i].Commission = client.Portfolio[i].Commission + float64(-t.Quantity) * inst.InstrumentPrice *.001
 						} else {
-						client.Portfolio[i].Commission = float64(client.Portfolio[i].Quantity) * inst.InstrumentPrice *.001
+						client.Portfolio[i].Commission = client.Portfolio[i].Commission + float64(t.Quantity) * inst.InstrumentPrice *.001
 						}
 						break
 					}
@@ -982,7 +983,7 @@ func (t *SimpleChaincode) tradeSet(stub shim.ChaincodeStubInterface, args []stri
 		}
 		x509Cert, err := x509.ParseCertificate(bytes);
 		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate" +x509Cert.Subject.CommonName)
+			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate :" +x509Cert.Subject.CommonName)
 			return nil, nil
 		}
 		clientID := caller //x509Cert.Subject.CommonName
@@ -1027,7 +1028,7 @@ TODO*/
 			return nil, nil
 		}
 		tExecId := trade.TransactionHistory[len(trade.TransactionHistory)-1]
-		
+		fmt.Println (" Transaction ID :" + tExecId)
 		// get information from trade exec transaction
 		tbyte,err := stub.GetState(tExecId)												
 		if err != nil {
@@ -1073,7 +1074,7 @@ TODO*/
 				_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")
 				return nil, nil
 			}
-			
+			fmt.Println (" Trade ID and Execution Trade Id "+ tExec.TradeID +"-"+ tradeID)
 			// check settlement date to see if instrument is still valid
 				
 				t := Transaction{
@@ -1500,27 +1501,17 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 }
 
 // User by Issuer to Create new Issue in the Ledger
-/*			arg 0	:	Symbol
-			arg 1	:	Coupon
-			arg 2	:	Quantity
-			arg 3 	:	Rate
-			arg 4	:	Price
-			arg 5	:	Maturity date
-			arg	6	:	Issue Date
-			arg 7	:	Callable
-		newInstrument := Instrument{Symbol: t.Symbol,Quantity: t.Quantity, Rate: t.Rate ,SettlementDate: t.SettlementDate,InstrumentPrice: t.InstrumentPrice, EntityID: t.BankID, TradeID:t.TradeID}
-		client.Instruments = append(client.Instruments,newInstrument)
-		
-		b, err = json.Marshal(client)
-		if err == nil {
-			err = stub.PutState(client.EntityID,b)
-		} else {
-			_ = updateTransactionStatus(stub, transactionID, "Error while updating Client state")
-			return nil, nil
-		}		
-
+/*			arg 0 	: login user id
+			arg 1	:	Symbol
+			arg 2	:	Coupon
+			arg 3	:	Quantity
+			arg 4 	:	Rate
+			arg 5	:	Price
+			arg 6	:	Maturity date
+			arg	7	:	Issue Date
+			arg 8	:	Callable
 */
-func (t *SimpleChaincode) test(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
 	if len(args)== 9{
 		caller := args[0]
