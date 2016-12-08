@@ -1687,6 +1687,10 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 			//j++
 			}
 		}
+		
+		if status == "All" {
+			instrumentArray = instruments
+		}
 		b, err := json.Marshal(instrumentArray)
 		if err != nil {
 			return nil, errors.New("Error while marshalling trades")
