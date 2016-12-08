@@ -1648,6 +1648,7 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 	if err != nil {
 		return nil, errors.New("Error while unmarshalling entity data")
 	}
+	fmt.Println("Status and Entity" + args[1])
 	status := args[1]
 	//if entity.EntityType == "RegBody" {		
 	instruments := make([]Instrument,len(entity.Instruments))
@@ -1658,6 +1659,7 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 			if err != nil {
 				return nil, errors.New("Error while getting Instrument info from ledger")
 			}
+			fmt.Println("Bytevalue of Instruent and Entity" + string(byteVal))
 			err = json.Unmarshal(byteVal, &instruments[i])	
 			if err != nil {
 				return nil, errors.New("Error while unmarshalling trades")
@@ -1667,7 +1669,7 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 			j++
 			}
 		}
-		b, err := json.Marshal(instrumentArray)
+		b, err := json.Marshal(instruments)
 		if err != nil {
 			return nil, errors.New("Error while marshalling trades")
 		}
