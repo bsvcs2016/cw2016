@@ -390,7 +390,11 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
     }	else if function == "getTransactionStatus" {
         return t.getTransactionStatus(stub, args)
 	}	else if function == "getInstrument" {
-        return t.getInstrument(stub, args)		
+        return t.getInstrument(stub, args)
+	}	else if function == "getAllInstruments" {
+        return t.getAllInstruments(stub, args)
+	}	else if function == "getAllInstrumentTrades" {
+        return t.getAllInstrumentTrades(stub, args)
     }
 	fmt.Println("query did not find func: " + function)
     return nil, errors.New("Received unknown function query")
@@ -461,7 +465,7 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 // used by Client to send to Banks for new Issue.
 /*		arg 0 	: caller
 		arg 1	:	Symbol
-		arg 2	:	Quantity
+		arg 2 	: Bank
 		b, err = json.Marshal(client)
 		if err == nil {
 			err = stub.PutState(client.EntityID,b)
@@ -1627,4 +1631,98 @@ func (t *SimpleChaincode) updateInstrumentTradeHistory(stub shim.ChaincodeStubIn
 			return  errors.New("Unable to update Instrument Trade ")
 		}
 		return  nil
+}
+
+func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+/*
+	args 0 : Entity
+	args 1 : Status
+*/
+	// check entity type
+	entitybyte,err := stub.GetState(args[0])																									
+	if err != nil {
+		return nil, errors.New("Error while getting entity info from ledger")
+	}
+	var entity Entity
+	err = json.Unmarshal(entitybyte, &entity)		
+	if err != nil {
+		return nil, errors.New("Error while unmarshalling entity data")
+	}
+	status := args[1]
+	//if entity.EntityType == "RegBody" {		
+	instruments := make([]Instrument,len(entity.Instruments))
+	var instrumentArray []Instrument
+	j :=0
+		for i:=0; i<len(entity.Instruments); i++ {
+			byteVal,err := stub.GetState(entity.Instruments[i])
+			if err != nil {
+				return nil, errors.New("Error while getting Instrument info from ledger")
+			}
+			err = json.Unmarshal(byteVal, &instruments[i])	
+			if err != nil {
+				return nil, errors.New("Error while unmarshalling trades")
+			}
+			if instruments[i].Status == status{
+			instrumentArray[j]=instruments[i]
+			j++
+			}
+		}
+		b, err := json.Marshal(instrumentArray)
+		if err != nil {
+			return nil, errors.New("Error while marshalling trades")
+		}
+		return b, nil
+
+}
+
+func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+/*
+	args 0 : Entity
+	args 1 : Symbol
+
+*/
+	// check entity type
+	entitybyte,err := stub.GetState(args[0])																									
+	if err != nil {
+		return nil, errors.New("Error while getting entity info from ledger")
+	}
+	var entity Entity
+	err = json.Unmarshal(entitybyte, &entity)		
+	if err != nil {
+		return nil, errors.New("Error while unmarshalling entity data")
+	}
+	
+	instbyte,err := stub.GetState(args[1])																									
+	if err != nil {
+		return nil, errors.New("Error while getting Instrument info from ledger")
+	}
+	var instrument Instrument
+	err = json.Unmarshal(instbyte, &instrument)		
+	if err != nil {
+		return nil, errors.New("Error while unmarshalling Instrument data")
+	}
+	
+	trades := make([]Transaction,len(instrument.TradeID))
+	var tradesArray []Transaction
+	j :=0
+		for i:=0; i<len(instrument.TradeID); i++ {
+			byteVal,err := stub.GetState(instrument.TradeID[i])
+			if err != nil {
+				return nil, errors.New("Error while getting Transaction info from ledger")
+			}
+			err = json.Unmarshal(byteVal, &trades[i])	
+			if err != nil {
+				return nil, errors.New("Error while unmarshalling trades")
+			}
+			if (trades[i].FromUser == args[0] ||trades[i].ToUser == args[0]){
+			tradesArray[j]=trades[i]
+			j++
+			}
+		}
+		b, err := json.Marshal(tradesArray)
+		if err != nil {
+			return nil, errors.New("Error while marshalling Transacations")
+		}
+		return b, nil
+
 }
