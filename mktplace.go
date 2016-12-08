@@ -541,7 +541,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		Status: "Success",
 		TimeStamp : time.Now(),
 		}
-
+		fmt.Println("Transaction")
 		//clientID = trn.FromUser
 		// convert to Transaction to JSON
 		b, err := json.Marshal(trn)
@@ -556,7 +556,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling trade data")
 			return nil, nil
 		}
-		
+		fmt.Println("Transaction Updated")
 		bankByte, err := stub.GetState(args[2])
 		if err != nil {
 			return nil, errors.New("Unable to get Bank's data")
@@ -586,17 +586,17 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history for Issuer")
 			return nil, nil
 		}
-
+		fmt.Println("Instruent History" +trn.FromUser)
 		err = updateInstrumentHistory(stub, trn.ToUser, trn.Symbol)
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+trn.ToUser+" :"+trn.Symbol)
 		}
-		
+		fmt.Println("Instruent History" +trn.FromUser)
 		err = t.updateInstrumentStatus(stub, trn.Symbol, bank.EntityType, "Published")
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+trn.ToUser+" :"+trn.Symbol)
 		}
-		
+		fmt.Println("Instruent updateInstrumentStatus" +trn.FromUser)
 		err = t.updateInstrumentTradeHistory(stub, trn.Symbol, trn.TransactionID)
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument Trade Histiry History : Caller : "+trn.TransactionID+" :"+trn.Symbol)
