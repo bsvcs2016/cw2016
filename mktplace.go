@@ -158,7 +158,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity3,
 		EntityName:	"Bank A",
 		EntityType: "Bank",
-		Balance : 10000000.00,
+		Balance : 100000000.00,
 	}
 	b, err = json.Marshal(bank1)
 	if err == nil {
@@ -170,7 +170,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity4,
 		EntityName:	"Bank B",
 		EntityType: "Bank",
-		Balance : 10000000.00,
+		Balance : 100000000.00,
 	}
 	b, err = json.Marshal(bank2)
 	if err == nil {
@@ -183,7 +183,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity5,
 		EntityName:	"Bank 3",
 		EntityType: "Bank",
-		Balance : 10000000.00,
+		Balance : 100000000.00,
 	}
 	b, err = json.Marshal(bank3)
 	if err == nil {
@@ -196,7 +196,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity6,
 		EntityName:	"Bank 4",
 		EntityType: "Bank",
-		Balance : 10000000.00,
+		Balance : 100000000.00,
 	}
 	b, err = json.Marshal(bank4)
 	if err == nil {
@@ -220,7 +220,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity7,
 		EntityName:	"Investor 1",
 		EntityType: "Investor",
-		Balance : 20000000.00,
+		Balance : 200000000.00,
 	}
 	b, err = json.Marshal(inv1)
 	if err == nil {
@@ -233,7 +233,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity8,
 		EntityName:	"Investor 2",
 		EntityType: "Investor",
-		Balance : 20000000.00,
+		Balance : 200000000.00,
 	}
 	b, err = json.Marshal(inv2)
 	if err == nil {
@@ -759,9 +759,26 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			return nil, errors.New("Unable to update Instrument Responded Quantity "+err.Error())
 		}
 		
-		err = t.updateInstrumentStatus(stub, args[1],rfq.ToUser,"AllocatedToBank")
+		err = t.updateInstrumentStatus(stub, args[1],rfq.ToUser,status)
 		if err != nil{
 		 return nil,errors.New("Unable to update Instruent Status")
+		}
+		// add Transaction ID to entity's trade history
+		err = updateTradeHistory(stub, tr.ToUser, tr.TransactionID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
+			return nil, nil
+		}	
+		// add Transaction ID to entity's trade history
+		err = updateTradeHistory(stub, tr.FromUser, tr.TransactionID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history for Issuer")
+			return nil, nil
+		}
+		fmt.Println("Instruent updateInstrumentStatus" +tr.TransactionID)
+		err = t.updateInstrumentTradeHistory(stub, tr.Symbol, tr.TransactionID)
+		if err != nil {
+			return nil, errors.New( "Error while updating Instrument Trade Histiry History : Caller : "+tr.TransactionID+" :"+tr.Symbol)
 		}
 		return nil, nil
 	}	else{  // not accepted
