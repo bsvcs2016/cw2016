@@ -56,6 +56,16 @@ type Transaction struct{		// ledger transactions
 	TimeStamp time.Time
 }
 
+type Trade struct				
+{
+	TradeID string				// rfq transaction id
+	Symbol string
+	Quantity int
+	TradeType string			// Not Required
+	TransactionHistory []string // transactions belonging to this trade
+	Status string				// "New Issue" or "Bank Response" or "Issuer Accepted" or "Pending Allocation" or "Trade timed out"
+}
+
 const entity1 = "user_type1_1"
 const entity2 = "user_type1_2"
 const entity3 = "user_type1_3"
@@ -75,13 +85,53 @@ func main() {
     }
 }
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
+	// initialize Instruent	
+	instrument:= Instrument{		
+		Symbol :"TEST1",
+	Coupon :"BW",
+	Quantity :10000,
+	InstrumentPrice :100,
+	Rate :.1,
+	SettlementDate :"03/11/2017",
+	IssueDate	:"12/11/2016",
+	Callable	:"Yes",
+	Status :"New Issue",
+	Owner :"user_type1_1",
+	}
+	b, err := json.Marshal(instrument)
+	if err == nil {
+        err = stub.PutState(instrument.Symbol,b)
+    } else {
+		return nil, err
+	}
+	
+	instrument1:= Instrument{		
+		Symbol :"TEST2",
+	Coupon :"M",
+	Quantity :50000,
+	InstrumentPrice :50,
+	Rate :.2,
+	SettlementDate :"07/11/2017",
+	IssueDate	:"01/11/2017",
+	Callable	:"Yes",
+	Status :"New Issue",
+	Owner :"user_type1_1",
+	}
+	b, err = json.Marshal(instrument1)
+	if err == nil {
+        err = stub.PutState(instrument1.Symbol,b)
+    } else {
+		return nil, err
+	}
 	// initialize entities	
 	client:= Entity{		
 		EntityID: entity1,	  
 		EntityName:	"Issuer A",
 		EntityType: "Issuer",
 	}
-	b, err := json.Marshal(client)
+	client.Instruments = append(client.Instruments,"TEST1")
+	client.Instruments = append(client.Instruments,"TEST2")
+	b, err = json.Marshal(client)
 	if err == nil {
         err = stub.PutState(client.EntityID,b)
     } else {
@@ -422,7 +472,7 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 */
 func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	if len(args) >= 4{
+	if len(args) >=2{
 		var transactionID  string 
 		//get instrument detail
 		instbyte , err := stub.GetState(args[1])
@@ -431,7 +481,8 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		if(err != nil){
 			return nil, errors.New("Error while unmarshalling Instrument data:" +args[1])
 		}
-		quantity, err := strconv.Atoi(args[3])
+		//quantity, err := strconv.Atoi(args[3])
+		
 		if err != nil {
 			return nil, errors.New("Unable to convert Quantity ")
 		}
@@ -539,22 +590,51 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+trn.ToUser+" :"+trn.Symbol)
 		}
 		
+		err = t.updateInstrumentTradeHistory(stub, trn.Symbol, trn.TransactionID)
+		if err != nil {
+			return nil, errors.New( "Error while updating Instrument Trade Histiry History : Caller : "+trn.TransactionID+" :"+trn.Symbol)
+		}
+		
 	 //} //For loop
 		return []byte(transactionID), nil
 	}
 	return nil, errors.New("Incorrect number of arguments")
 }
 /*			arg 0	:	Caller
-			arg 1	:	Trader Id
-			arg 2	:	RequestID(QuoteID)
-			arg 3	:	Quantity
+			arg 1	:	Instrument ID
+			arg 2	:	Response (yes/no)
+			arg 3	:	Status
 */
 func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	if len(args)== 8 {
+	if len(args)== 5 {
 		caller := args[0]
-		tradeID := args[1]
-		quoteID := args[2]
-		
+		symbol := args[1]
+		response := args[3]
+		status := args[4]
+		instbyte, err := stub.GetState(symbol)
+		if err != nil {
+			return nil, errors.New("Instruent not found")
+		}
+		var inst Instrument
+		err= json.Unmarshal(instbyte, &inst)
+		if err != nil {
+			return nil, errors.New("Error in unmarshalling instruent ")
+		}
+		quoteID := inst.TradeID[len(inst.TradeID)-1]
+		// get information from requestForIssue transaction
+		rfqbyte,err := stub.GetState(quoteID)												
+		if err != nil {
+			_ = updateTransactionStatus(stub, quoteID, "Error while reading quote request transaction from ledger")
+			return nil, nil
+		}
+		var rfq Transaction
+		err = json.Unmarshal(rfqbyte, &rfq)
+		if err != nil {
+			_ = updateTransactionStatus(stub, quoteID, "Error while unmarshalling quote request data")
+			return nil, nil
+		}
+
+		if response =="yes" {
 		ctidByte, err := stub.GetState("currentTransactionNum")
 		if(err != nil){
 			return nil, errors.New("Error while getting currentTransactionNum from ledger")
@@ -581,29 +661,15 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		caller1, err := t.get_username(stub)
 		fmt.Println("Respond to Issue : Caller1 :"+ caller1)
 		
-		// get information from requestForIssue transaction
-		rfqbyte,err := stub.GetState(quoteID)												
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while reading quote request transaction from ledger")
-			return nil, nil
-		}
-		var rfq Transaction
-		err = json.Unmarshal(rfqbyte, &rfq)
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while unmarshalling quote request data")
-			return nil, nil
-		}
 		
-		if rfq.TradeID != tradeID {
+		if rfq.Symbol != symbol {
 			_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")
 			return nil, nil
 		}		
 		fmt.Println("Respond to Issue : Quantity "+args[3])
 		
-		quantity , err := strconv.Atoi(args[3])
-		if err != nil {
-			return nil, errors.New("Error in converting Quantity")
-		}
+		quantity := rfq.Quantity
+		
 		// check if required quantity is  under limit
 		instrumentByte,err := stub.GetState(rfq.Symbol)																											
 		if err != nil {
@@ -638,7 +704,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			return nil, errors.New("Entity Not Found")
 		}
 		
-		t := Transaction {
+		tr := Transaction {
 		TransactionID: transactionID,
 		TransactionType: "Response",
 		//InstrumentType: rfq.InstrumentType,														// get from rfq
@@ -654,11 +720,11 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		}
 
 		// convert to JSON
-		b, err := json.Marshal(t)
+		b, err := json.Marshal(tr)
 		
 		// write to ledger
 		if err == nil {
-			err = stub.PutState(t.TransactionID,b)
+			err = stub.PutState(tr.TransactionID,b)
 			if err != nil {
 				_ = updateTransactionStatus(stub, transactionID, "Error while writing Response transaction to ledger")
 				return nil, nil
@@ -681,13 +747,17 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			return nil, errors.New("Unable to update Instrument Responded Quantity "+err.Error())
 		}
 		
-		// updating trade transaction history and status
-		err = updateTradeState(stub, t.TradeID, t.TransactionID,"Responded")
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade state")
-			return nil, nil
+		err = t.updateInstrumentStatus(stub, args[1],rfq.ToUser,"Published to Bank")
+		if err != nil{
+		 return nil,errors.New("Unable to update Instruent Status")
 		}
 		return nil, nil
+	}	else{  // not accepted
+		err := t.updateInstrumentStatus(stub, args[1],rfq.FromUser,status)
+		if err != nil{
+		 return nil,errors.New("Unable to update Instruent Status")
+		}
+	}
 	}
 	return nil, errors.New("Incorrect number of arguments")
 }
@@ -907,7 +977,10 @@ func (t *SimpleChaincode) tradeExec(stub shim.ChaincodeStubInterface, args []str
 /*			arg 0	:	TradeID
 			arg 1	:	Yes/ No
 */
+
 func (t *SimpleChaincode) tradeSet(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+return nil, nil
+/*
 	if len(args)== 3 {
 		caller := args[0]
 		tradeID := args[1]
@@ -950,33 +1023,13 @@ func (t *SimpleChaincode) tradeSet(stub shim.ChaincodeStubInterface, args []stri
 			return nil, nil
 		}
 		// remove instrument from clients data, check tradeID
-		/*
-		copyFlag := false
-		btradeID ,_:= strconv.Atoi(tradeID)
-		for i := 0; i< len(client.Instruments); i++ {
-			if client.Instruments[i].TradeID == btradeID {
-				copyFlag = true
-				continue
-			}
-			if copyFlag == true {
-				client.Instruments[i-1]=client.Instruments[i]
-			}
-		}
-		client.Instruments = client.Instruments[:(len(client.Instruments)-1)]
-TODO*/
+
 		// get transactionID from tradeID
 		tradebyte,err := stub.GetState(tradeID)
 		if err != nil {
 			_ = updateTransactionStatus(stub, transactionID, "Error while getting trade info from ledger")
 			return nil, nil
 		}
-		var trade Trade
-		err = json.Unmarshal(tradebyte, &trade)		
-		if err != nil {
-			_ = updateTransactionStatus(stub, transactionID, "Error while unmarshalling trade data")
-			return nil, nil
-		}
-		tExecId := trade.TransactionHistory[len(trade.TransactionHistory)-1]
 		fmt.Println (" Transaction ID :" + tExecId)
 		// get information from trade exec transaction
 		tbyte,err := stub.GetState(tExecId)												
@@ -1005,19 +1058,7 @@ TODO*/
 			return nil, nil
 		}
 		// remove instrument from bank 
-		/* TODO
-		copyFlag = false
-		for i := 0; i< len(bank.Instruments); i++ {
-			if bank.Instruments[i].TradeID == btradeID {
-				copyFlag = true
-				continue
-			}
-			if copyFlag == true {
-				bank.Instruments[i-1]=bank.Instruments[i]
-			}
-		}
-		bank.Instruments = bank.Instruments[:(len(bank.Instruments)-1)]
-		*/
+
 		// check if trade has to be settled
 			if tExec.TradeID != tradeID {
 				_ = updateTransactionStatus(stub, transactionID, "Error due to mismatch in tradeIDs")
@@ -1107,7 +1148,9 @@ TODO*/
 		return nil, nil
 	}
 	return nil, errors.New("Incorrect number of arguments")
+	*/
 }
+
 // get user id
 func (t *SimpleChaincode) getUserID(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	bytes, err := stub.GetCallerCertificate()
@@ -1203,6 +1246,8 @@ func updateInstrumentHistory(stub shim.ChaincodeStubInterface, entityID string, 
 
 
 func updateTradeState(stub shim.ChaincodeStubInterface, tradeID string, transactionID string, status string) (error) {
+	return nil
+	/*
 	// read trade state
 	tradebyte,err := stub.GetState(tradeID)																										
 	if err != nil {
@@ -1227,6 +1272,7 @@ func updateTradeState(stub shim.ChaincodeStubInterface, tradeID string, transact
 		return errors.New("Error while updating trade status")
 	}
 	return nil
+	*/
 }
 
 func (t *SimpleChaincode) trial(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
@@ -1278,11 +1324,13 @@ func (t *SimpleChaincode) readTrades(stub shim.ChaincodeStubInterface, args []st
 	return nil, errors.New("Incorrect number of arguments")
 }
 func (t *SimpleChaincode) readIssueRequests(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+  return nil, nil
+  /*
 	var quoteTransactions []string
 	// get current Trade number
-	ctidByte, err := stub.GetState("currentTradeNum")
+	ctidByte, err := stub.GetState("currentTransactionNum")
 	if(err != nil){
-		return nil, errors.New("Error while getting currentTradeNum from ledger")
+		return nil, errors.New("Error while getting currentTransactionNum from ledger")
 	}
 	tradeNum,err := strconv.Atoi(string(ctidByte))
 	if(err != nil){
@@ -1291,11 +1339,11 @@ func (t *SimpleChaincode) readIssueRequests(stub shim.ChaincodeStubInterface, ar
 	// check all trades
 	for tradeNum > 1000 {
 		// read trade state
-		tradebyte,err := stub.GetState("trade"+strconv.Itoa(tradeNum))
+		tradebyte,err := stub.GetState("trans"+strconv.Itoa(tradeNum))
 		if err != nil {
 			return nil, errors.New("Error while getting trade info from ledger")
 		}
-		var trade Trade
+		var trade Transaction
 		err = json.Unmarshal(tradebyte, &trade)		
 		if err != nil {
 			return nil, errors.New("Error while unmarshalling trade data")
@@ -1334,6 +1382,7 @@ func (t *SimpleChaincode) readIssueRequests(stub shim.ChaincodeStubInterface, ar
 	}
 	b, err := json.Marshal(quoteTransactions)
 	return b, nil
+	*/
 }
 
 func updateTransactionStatus(stub shim.ChaincodeStubInterface, transactionID string, status string) (error) {
@@ -1557,3 +1606,25 @@ func (t *SimpleChaincode) updateInstrumentStatus(stub shim.ChaincodeStubInterfac
 		return  nil
 }
 
+
+func (t *SimpleChaincode) updateInstrumentTradeHistory(stub shim.ChaincodeStubInterface, symbol string, TransactionID string) (error) {
+		instbyte,err := stub.GetState(symbol)																									
+		if err != nil {
+			return  errors.New("Error while getting Instrument info from ledger")
+		}
+		var inst Instrument
+		err = json.Unmarshal(instbyte, &inst)
+		if err != nil {
+			return  errors.New("Unable to Unmarshal Instrument")
+		}
+		inst.TradeID = append(inst.TradeID,TransactionID)
+		b , err := json.Marshal(inst)
+		if err != nil {
+			return  errors.New("Unable to marshal Instrument")
+		}
+		err = stub.PutState(inst.Symbol,b)
+		if err != nil {
+			return  errors.New("Unable to update Instrument Trade ")
+		}
+		return  nil
+}
