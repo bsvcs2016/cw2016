@@ -616,8 +616,8 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 	if len(args)== 5 {
 		caller := args[0]
 		symbol := args[1]
-		response := args[3]
-		status := args[4]
+		response := args[2]
+		status := args[3]
 		instbyte, err := stub.GetState(symbol)
 		if err != nil {
 			return nil, errors.New("Instruent not found")
@@ -628,6 +628,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			return nil, errors.New("Error in unmarshalling instruent ")
 		}
 		quoteID := inst.TradeID[len(inst.TradeID)-1]
+		
 		// get information from requestForIssue transaction
 		rfqbyte,err := stub.GetState(quoteID)												
 		if err != nil {
@@ -693,7 +694,6 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		fmt.Println("Respond to Issue : Instrument symbol"+inst.Symbol)
 		
 
-		fmt.Println("Quantity Responded :" + args[3] )
 		fmt.Printf("Quantity Instrument :%g" ,inst.Quantity )
 		if quantity >inst.Quantity {
 		 return nil, errors.New("Response Quantity should be less or equal to requested")
@@ -1688,7 +1688,7 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 	//if entity.EntityType == "RegBody" {		
 	instruments := make([]Instrument,len(entity.Instruments))
 	var instrumentArray []Instrument //:= make([]Instrument,1)
-	//j :=0
+
 		for i:=0; i<len(entity.Instruments); i++ {
 			byteVal,err := stub.GetState(entity.Instruments[i])
 			if err != nil {
@@ -1699,9 +1699,12 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 			if err != nil {
 				return nil, errors.New("Error while unmarshalling trades")
 			}
-			if instruments[i].Status == status{
+			if status =="Outstanding" && instruments[i].Status != "New Issue"{
+				instrumentArray = append(instrumentArray,instruments[i])
+			}else if instruments[i].Status == status{
 			instrumentArray = append(instrumentArray,instruments[i])
-			//j++
+			}else {
+			 fmt.Println("status" + status + " -" +instruments[i].Status )
 			}
 		}
 		
