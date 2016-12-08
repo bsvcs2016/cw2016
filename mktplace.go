@@ -1652,7 +1652,7 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 	status := args[1]
 	//if entity.EntityType == "RegBody" {		
 	instruments := make([]Instrument,len(entity.Instruments))
-	var instrumentArray []Instrument
+	instrumentArray := make([]Instrument,len(entity.Instruments))
 	j :=0
 		for i:=0; i<len(entity.Instruments); i++ {
 			byteVal,err := stub.GetState(entity.Instruments[i])
