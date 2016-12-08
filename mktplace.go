@@ -613,7 +613,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			arg 3	:	Status
 */
 func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-	if len(args)== 5 {
+	if len(args)== 4 {
 		caller := args[0]
 		symbol := args[1]
 		response := args[2]
