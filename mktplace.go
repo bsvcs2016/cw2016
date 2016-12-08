@@ -31,6 +31,7 @@ type Instrument struct{
 	QuantityResponded int
 	Status string
 	Owner string
+	Bank string
 }
 type Entity struct{
 	EntityID string				// enrollmentID
@@ -39,6 +40,7 @@ type Entity struct{
 	Portfolio []Stock
 	Instruments []string
 	TradeHistory []string		// list of tradeIDs
+	Balance float64
 }
 
 type Transaction struct{		// ledger transactions
@@ -128,6 +130,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity1,	  
 		EntityName:	"Issuer A",
 		EntityType: "Issuer",
+		Balance : 1000000.00,
 	}
 	client.Instruments = append(client.Instruments,"TEST1")
 	client.Instruments = append(client.Instruments,"TEST2")
@@ -142,6 +145,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity2,	  
 		EntityName:	"Issuer B",
 		EntityType: "Issuer",
+		Balance : 1000000.00,
 	}
 	b1, err := json.Marshal(client2)
 	if err == nil {
@@ -154,6 +158,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity3,
 		EntityName:	"Bank A",
 		EntityType: "Bank",
+		Balance : 10000000.00,
 	}
 	b, err = json.Marshal(bank1)
 	if err == nil {
@@ -165,6 +170,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity4,
 		EntityName:	"Bank B",
 		EntityType: "Bank",
+		Balance : 10000000.00,
 	}
 	b, err = json.Marshal(bank2)
 	if err == nil {
@@ -177,6 +183,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity5,
 		EntityName:	"Bank 3",
 		EntityType: "Bank",
+		Balance : 10000000.00,
 	}
 	b, err = json.Marshal(bank3)
 	if err == nil {
@@ -189,6 +196,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity6,
 		EntityName:	"Bank 4",
 		EntityType: "Bank",
+		Balance : 10000000.00,
 	}
 	b, err = json.Marshal(bank4)
 	if err == nil {
@@ -212,6 +220,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity7,
 		EntityName:	"Investor 1",
 		EntityType: "Investor",
+		Balance : 20000000.00,
 	}
 	b, err = json.Marshal(inv1)
 	if err == nil {
@@ -224,6 +233,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityID: entity8,
 		EntityName:	"Investor 2",
 		EntityType: "Investor",
+		Balance : 20000000.00,
 	}
 	b, err = json.Marshal(inv2)
 	if err == nil {
@@ -466,13 +476,7 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 /*		arg 0 	: caller
 		arg 1	:	Symbol
 		arg 2 	: Bank
-		b, err = json.Marshal(client)
-		if err == nil {
-			err = stub.PutState(client.EntityID,b)
-		} else {
-			_ = updateTransactionStatus(stub, transactionID, "Error while updating Client state")
-			return nil, nil
-		}		
+	
 */
 func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
@@ -523,8 +527,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		}
 		fmt.Println("x509Cert.Subject.CommonName :" +x509Cert.Subject.CommonName)
 		
-		
-		// Create Instrument , Create Multiple Transactions with Each Bank as per selection in UI
+		//  Create Multiple Transactions with Each Bank as per selection in UI
 		//Transaction
 		trn := Transaction{
 		TransactionID: transactionID,
@@ -745,13 +748,18 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		}
 		
 		inst.QuantityResponded = inst.QuantityResponded + quantity
+		commission := float64(quantity)*inst.InstrumentPrice*.001
+		price := float64(quantity)*inst.InstrumentPrice
+		t.updateEntityBalance(stub,caller, -1*(price - commission))
+		t.updateEntityBalance(stub,rfq.FromUser, (price - commission))
+		
 		b, err = json.Marshal(inst)
 		err = stub.PutState(inst.Symbol,b)
 		if err != nil{
 			return nil, errors.New("Unable to update Instrument Responded Quantity "+err.Error())
 		}
 		
-		err = t.updateInstrumentStatus(stub, args[1],rfq.ToUser,"Published to Bank")
+		err = t.updateInstrumentStatus(stub, args[1],rfq.ToUser,"AllocatedToBank")
 		if err != nil{
 		 return nil,errors.New("Unable to update Instruent Status")
 		}
@@ -1518,13 +1526,10 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 	if len(args)== 9{
 		caller := args[0]
 		// Check if the Symbol Id already exists
-		/*_, err := stub.GetState(args[1])
+		_, err := stub.GetState(args[1])
 		if err == nil {
 			return nil, errors.New("Instrument with this ID already Exists, Try a different Name")
-			
 		}
-		order 463601815
-		*/
 		
 		//return nil, errors.New("Symbol")
 		fmt.Printf("Symbol: Arguments %s", args[1]);
@@ -1597,6 +1602,19 @@ func (t *SimpleChaincode) updateInstrumentStatus(stub shim.ChaincodeStubInterfac
 		if err != nil {
 			return  errors.New("Unable to Unmarshal Instrument")
 		}
+		entityByte , err := stub.GetState(possassion)
+		if err != nil {
+		   return errors.New("Error in getting Entity")
+		}
+		var entity Entity
+		err = json.Unmarshal(entityByte, &entity)
+		if err != nil {
+		   return  errors.New("Error in getting Entity Unarshal")
+		}
+		if entity.EntityType =="Bank" {
+			inst.Bank = possassion
+		}
+		
 		inst.Owner = possassion
 		inst.Status = status
 		b , err := json.Marshal(inst)
@@ -1727,4 +1745,30 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 		}
 		return b, nil
 
+}
+
+
+func (t *SimpleChaincode) updateEntityBalance(stub shim.ChaincodeStubInterface, entity string, Amount float64) ([]byte, error) {
+
+// check entity type
+	entitybyte,err := stub.GetState(entity)																									
+	if err != nil {
+		return nil, errors.New("Error while getting entity info from ledger")
+	}
+	var entity1 Entity
+	err = json.Unmarshal(entitybyte, &entity1)		
+	if err != nil {
+		return nil, errors.New("Error while unmarshalling entity data")
+	}
+	entity1.Balance = entity1.Balance+ Amount
+
+	b, err := json.Marshal(entity1)
+	if err != nil {
+		return nil, errors.New("Error while marshal entity data")
+	}
+	err = stub.PutState(entity, b)
+	if err != nil {
+		return nil, errors.New("Error while updating entity data")
+	}
+	return nil, nil
 }
