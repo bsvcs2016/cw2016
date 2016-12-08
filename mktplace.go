@@ -1669,7 +1669,7 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 			j++
 			}
 		}
-		b, err := json.Marshal(instruments)
+		b, err := json.Marshal(instrumentArray)
 		if err != nil {
 			return nil, errors.New("Error while marshalling trades")
 		}
@@ -1705,7 +1705,7 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 	}
 	
 	trades := make([]Transaction,len(instrument.TradeID))
-	var tradesArray []Transaction
+	tradesArray  := make([]Transaction,len(instrument.TradeID))
 	j :=0
 		for i:=0; i<len(instrument.TradeID); i++ {
 			byteVal,err := stub.GetState(instrument.TradeID[i])
