@@ -1652,8 +1652,8 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 	status := args[1]
 	//if entity.EntityType == "RegBody" {		
 	instruments := make([]Instrument,len(entity.Instruments))
-	instrumentArray := make([]Instrument,len(entity.Instruments))
-	j :=0
+	var instrumentArray []Instrument //:= make([]Instrument,1)
+	//j :=0
 		for i:=0; i<len(entity.Instruments); i++ {
 			byteVal,err := stub.GetState(entity.Instruments[i])
 			if err != nil {
@@ -1665,8 +1665,8 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 				return nil, errors.New("Error while unmarshalling trades")
 			}
 			if instruments[i].Status == status{
-			instrumentArray[j]=instruments[i]
-			j++
+			instrumentArray = append(instrumentArray,instruments[i])
+			//j++
 			}
 		}
 		b, err := json.Marshal(instrumentArray)
@@ -1705,8 +1705,8 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 	}
 	
 	trades := make([]Transaction,len(instrument.TradeID))
-	tradesArray  := make([]Transaction,len(instrument.TradeID))
-	j :=0
+	var tradesArray  []Transaction
+	
 		for i:=0; i<len(instrument.TradeID); i++ {
 			byteVal,err := stub.GetState(instrument.TradeID[i])
 			if err != nil {
@@ -1717,8 +1717,8 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 				return nil, errors.New("Error while unmarshalling trades")
 			}
 			if (trades[i].FromUser == args[0] ||trades[i].ToUser == args[0]){
-			tradesArray[j]=trades[i]
-			j++
+			tradesArray = append(tradesArray,trades[i])
+
 			}
 		}
 		b, err := json.Marshal(tradesArray)
