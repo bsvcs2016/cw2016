@@ -592,11 +592,11 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+trn.ToUser+" :"+trn.Symbol)
 		}
 		fmt.Println("Instruent History" +trn.FromUser)
-		err = t.updateInstrumentStatus(stub, trn.Symbol, bank.EntityType, "Published")
+		err = t.updateInstrumentStatus(stub, trn.Symbol, args[2], "Published")
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+trn.ToUser+" :"+trn.Symbol)
 		}
-		fmt.Println("Instruent updateInstrumentStatus" +trn.FromUser)
+		fmt.Println("Instruent updateInstrumentStatus" +trn.TransactionID)
 		err = t.updateInstrumentTradeHistory(stub, trn.Symbol, trn.TransactionID)
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument Trade Histiry History : Caller : "+trn.TransactionID+" :"+trn.Symbol)
