@@ -1711,14 +1711,25 @@ func (t *SimpleChaincode) getAllInstruments(stub shim.ChaincodeStubInterface, ar
 				return nil, errors.New("Error while getting Instrument info from ledger")
 			}
 			fmt.Println("Bytevalue of Instruent and Entity" + string(byteVal))
+			
 			err = json.Unmarshal(byteVal, &instruments[i])	
 			if err != nil {
 				return nil, errors.New("Error while unmarshalling trades")
 			}
-			if status =="Outstanding" && instruments[i].Status != "New Issue"{
+			if entity.EntityType =="Issuer" && status =="Outstanding" && instruments[i].Status != "New Issue"{
+			
 				instrumentArray = append(instrumentArray,instruments[i])
+				
+			}else if entity.EntityType =="Bank" && status =="Outstanding" && instruments[i].Status != "PublishToBank"{
+					instrumentArray = append(instrumentArray,instruments[i])
+					
+			}else if entity.EntityType =="Investor" && status =="Outstanding" && instruments[i].Status != "PublishToInvestor"{
+					instrumentArray = append(instrumentArray,instruments[i])
+					
 			}else if instruments[i].Status == status{
-			instrumentArray = append(instrumentArray,instruments[i])
+			
+				instrumentArray = append(instrumentArray,instruments[i])
+			
 			}else {
 			 fmt.Println("status" + status + " -" +instruments[i].Status )
 			}
