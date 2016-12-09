@@ -75,10 +75,10 @@ const entity3 = "user_type1_3"  //bank1
 const entity4 = "user_type1_4"	//bank2
 const entity5 = "user_type2_0"  //bank3
 const entity6 = "user_type2_1"	//bank4
-const entity8 = "user_type2_2"	//Investor1
-const entity9 = "user_type2_3"  //inivestor2
+const entity7 = "user_type2_2"	//Investor1
+const entity8 = "user_type2_3"  //investor2
 
-const entity7 = "user_type2_4"  //regulator
+const entity9 = "user_type2_4"  //regulator
 
 type SimpleChaincode struct {
 }
