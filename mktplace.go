@@ -69,15 +69,16 @@ type Trade struct
 	Status string				// "New Issue" or "Bank Response" or "Issuer Accepted" or "Pending Allocation" or "Trade timed out"
 }
 
-const entity1 = "user_type1_1"
-const entity2 = "user_type1_2"
-const entity3 = "user_type1_3"
-const entity4 = "user_type1_4"
-const entity5 = "user_type2_0"
-const entity6 = "user_type2_1"
-const entity7 = "user_type2_2"
-const entity8 = "user_type2_3"
-const entity9 = "user_type2_4"
+const entity1 = "user_type1_1" //issuer1
+const entity2 = "user_type1_2"  //issuer2
+const entity3 = "user_type1_3"  //bank1
+const entity4 = "user_type1_4"	//bank2
+const entity5 = "user_type2_0"  //bank3
+const entity6 = "user_type2_1"	//bank4
+const entity8 = "user_type2_2"	//Investor1
+const entity9 = "user_type2_3"  //inivestor2
+
+const entity7 = "user_type2_4"  //regulator
 
 type SimpleChaincode struct {
 }
@@ -494,11 +495,10 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		if(err != nil){
 			return nil, errors.New("Error while unmarshalling Instrument data:" +args[1])
 		}
-		//quantity, err := strconv.Atoi(args[3])
-		
-		if err != nil {
-			return nil, errors.New("Unable to convert Quantity ")
+		if instr.Owner == args[0] {    // if caller is not the owner then return error 
+			return nil, errors.New("Only Ownen can Request for Invesent")
 		}
+		
 		//for i :=2; i < len(args); i++ {
 		// get current Trade number
 		// get current Transaction number
@@ -718,7 +718,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		
 		tr := Transaction {
 		TransactionID: transactionID,
-		TransactionType: "Response",
+		TransactionType: status,
 		//InstrumentType: rfq.InstrumentType,														// get from rfq
 		FromUser:	caller,														// 
 		ToUser: rfq.FromUser,  //x509Cert.Subject.CommonName,											// 
@@ -752,7 +752,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 			return nil, nil
 		}
 		
-		inst.QuantityResponded = inst.QuantityResponded + quantity
+		inst.QuantityResponded = quantity
 		commission := float64(quantity)*inst.InstrumentPrice*.001
 		price := float64(quantity)*inst.InstrumentPrice
 		err = t.updateEntityBalance(stub,caller, -1*(price - commission))   //Caller
@@ -1468,7 +1468,7 @@ func (t *SimpleChaincode) getEntityList(stub shim.ChaincodeStubInterface, args [
 			return nil, errors.New("Error while unmarshalling entity data")
 		}
 		// check type
-		if entity.EntityType == "Client" || entity.EntityType == "Bank" {
+		if entity.EntityType == "Issuer" || entity.EntityType == "Bank" || entity.EntityType == "Investor"{
 			entities = append(entities,allEntities[i])
 		}
 	}
@@ -1774,6 +1774,9 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 			tradesArray = append(tradesArray,trades[i])
 
 			}
+		}
+		if entity.EntityType =="Reg Body"{
+			tradesArray = trades
 		}
 		b, err := json.Marshal(tradesArray)
 		if err != nil {
