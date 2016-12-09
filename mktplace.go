@@ -499,8 +499,8 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		if(err != nil){
 			return nil, errors.New("Error while unmarshalling Instrument data:" +args[1])
 		}
-		if instr.Owner == args[0] {    // if caller is not the owner then return error 
-			return nil, errors.New("Only Ownen can Request for Invesent")
+		if instr.Owner != args[0] {    // if caller is not the owner then return error 
+			return nil, errors.New("Only Owner can Request for Invesent")
 		}
 		
 		//for i :=2; i < len(args); i++ {
