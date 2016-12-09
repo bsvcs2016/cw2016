@@ -531,7 +531,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			return nil, nil
 		}
 		fmt.Println("x509Cert.Subject.CommonName :" +x509Cert.Subject.CommonName)
-		status = args[3]
+		status := args[3]
 		//  Create Multiple Transactions with Each Bank as per selection in UI
 		//Transaction
 		trn := Transaction{
