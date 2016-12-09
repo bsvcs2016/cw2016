@@ -375,6 +375,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
         return t.tradeSet(stub, args)
     } else if function == "trial" {
         return t.trial(stub, args)
+	} else if function == "payCoupon" {
+        return t.payCoupon(stub, args)
+	} else if function == "issueCallout" {
+        return t.issueCallout(stub, args)
     } 
     fmt.Println("invoke did not find func: " + function)
     return nil, errors.New("Received unknown function invocation")
@@ -1814,4 +1818,146 @@ func (t *SimpleChaincode) updateEntityBalance(stub shim.ChaincodeStubInterface, 
 		return  errors.New("Error while updating entity data")
 	}
 	return  nil
+}
+
+func (t *SimpleChaincode) payCoupon(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+			/*
+				args 0 : Symbol
+			*/
+		instbyte , err := stub.GetState(args[0])
+		if err != nil {
+			 return nil, errors.New("Error in finding instrument")
+		}
+		var inst Instrument
+		err = json.Unmarshal(instbyte, &inst)		
+		if err != nil {
+			return  nil,errors.New("Error while unmarshalling instbyte data")
+		}
+		
+		owner  :=  inst.Owner
+		issuer  := inst.Issuer
+		coupon  := inst.Rate * float64(inst.Quantity)/100
+		
+		entitybyte,err := stub.GetState(issuer)																									
+		if err != nil {
+			return nil,errors.New("Error while getting Issuer info from ledger")
+		}
+		var entity Entity
+		err = json.Unmarshal(entitybyte, &entity)		
+		if err != nil {
+			return  nil,errors.New("Error while unmarshalling entity data")
+		}
+		
+		entity.Balance = entity.Balance- coupon
+		if entity.Balance <0 {
+		  return  nil,errors.New("Inssufficient Balance for Entity" + issuer)
+		}
+
+		b, err := json.Marshal(entity)
+		if err != nil {
+			return  nil,errors.New("Error while marshal entity data")
+		}
+		err = stub.PutState(issuer, b)
+		if err != nil {
+			return  nil,errors.New("Error while updating entity data")
+		}
+		
+		entitybyte,err = stub.GetState(owner)																									
+		if err != nil {
+			return nil,errors.New("Error while getting Banker/Investor info from ledger")
+		}
+
+		err = json.Unmarshal(entitybyte, &entity)		
+		if err != nil {
+			return  nil,errors.New("Error while unmarshalling entity data")
+		}
+		
+		entity.Balance = entity.Balance+ coupon
+
+		b, err = json.Marshal(entity)
+		if err != nil {
+			return  nil,errors.New("Error while marshal Investor/Banker entity data")
+		}
+		err = stub.PutState(owner, b)
+		if err != nil {
+			return  nil,errors.New("Error while updating entity data")
+		}
+		return  nil,nil
+}
+
+
+func (t *SimpleChaincode) issueCallout(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+			/*
+				args 0 : Symbol
+			*/
+		instbyte , err := stub.GetState(args[0])
+		if err != nil {
+			 return nil, errors.New("Error in finding instrument")
+		}
+		var inst Instrument
+		err = json.Unmarshal(instbyte, &inst)		
+		if err != nil {
+			return  nil,errors.New("Error while unmarshalling instbyte data")
+		}
+		
+		owner  :=  inst.Owner
+		issuer  := inst.Issuer
+		price  := inst.InstrumentPrice * float64(inst.Quantity)
+		inst.Status = "Expired"
+		inst.Owner = issuer
+		
+		entitybyte,err := stub.GetState(issuer)																									
+		if err != nil {
+			return nil,errors.New("Error while getting Issuer info from ledger")
+		}
+		var entity Entity
+		err = json.Unmarshal(entitybyte, &entity)		
+		if err != nil {
+			return  nil,errors.New("Error while unmarshalling entity data")
+		}
+		
+		entity.Balance = entity.Balance- price
+		if entity.Balance <0 {
+		  return  nil,errors.New("Inssufficient Balance for Entity :" + issuer)
+		}
+
+		b, err := json.Marshal(entity)
+		if err != nil {
+			return  nil,errors.New("Error while marshal entity data")
+		}
+		err = stub.PutState(issuer, b)
+		if err != nil {
+			return  nil,errors.New("Error while updating entity data")
+		}
+		
+		entitybyte,err = stub.GetState(owner)																									
+		if err != nil {
+			return nil,errors.New("Error while getting Banker/Investor info from ledger")
+		}
+
+		err = json.Unmarshal(entitybyte, &entity)		
+		if err != nil {
+			return  nil,errors.New("Error while unmarshalling entity data")
+		}
+		
+		entity.Balance = entity.Balance+ price
+
+		b, err = json.Marshal(entity)
+		if err != nil {
+			return  nil,errors.New("Error while marshal Investor/Banker entity data")
+		}
+		err = stub.PutState(owner, b)
+		if err != nil {
+			return  nil,errors.New("Error while updating entity data")
+		}
+		
+		b , err = json.Marshal(inst)
+		if err != nil {
+			return  nil,errors.New("Error while marshal Instrument data")
+		}
+		err = stub.PutState(args[0], b)
+		if err != nil {
+			return  nil,errors.New("Error while updating entity data")
+		}
+		return  nil,nil
 }
