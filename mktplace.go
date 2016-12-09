@@ -478,12 +478,14 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 // used by Client to send to Banks for new Issue.
 /*		arg 0 	: caller
 		arg 1	:	Symbol
-		arg 2 	: Bank
+		arg 2 	: Bank/Investor
+		arg 3	: Status /PublishToBank/PublishToInvestor
+		
 	
 */
 func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	if len(args) >=2{
+	if len(args) >=3{
 		var transactionID  string 
 		//get instrument detail
 		instbyte , err := stub.GetState(args[1])
@@ -529,12 +531,12 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			return nil, nil
 		}
 		fmt.Println("x509Cert.Subject.CommonName :" +x509Cert.Subject.CommonName)
-		
+		status = args[3]
 		//  Create Multiple Transactions with Each Bank as per selection in UI
 		//Transaction
 		trn := Transaction{
 		TransactionID: transactionID,
-		TransactionType: "Publish",
+		TransactionType: status,
 		FromUser:	args[0],	// enrollmentID
 		ToUser: args[2],
 		Symbol: args[1],						// based on input
@@ -595,7 +597,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+trn.ToUser+" :"+trn.Symbol)
 		}
 		fmt.Println("Instruent History" +trn.FromUser)
-		err = t.updateInstrumentStatus(stub, trn.Symbol, args[2], "Published")
+		err = t.updateInstrumentStatus(stub, trn.Symbol, args[2], status)
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+trn.ToUser+" :"+trn.Symbol)
 		}
