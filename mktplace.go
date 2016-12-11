@@ -1794,7 +1794,7 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 
 			}
 		}
-		if entity.EntityType =="Reg Body"{
+		if entity.EntityType =="RegBody"{
 			tradesArray = trades
 		}
 		b, err := json.Marshal(tradesArray)
