@@ -499,10 +499,13 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		if(err != nil){
 			return nil, errors.New("Error while unmarshalling Instrument data:" +args[1])
 		}
+		fmt.Println("Owner "+instr.Owner)
+		fmt.Println("Caller "+args[0])
+		/*
 		if instr.Owner != args[0] {    // if caller is not the owner then return error 
 			return nil, errors.New("Only Owner can Request for Investment")
 		}
-		
+		*/
 		//for i :=2; i < len(args); i++ {
 		// get current Trade number
 		// get current Transaction number
@@ -1768,6 +1771,7 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 		return nil, errors.New("Error while getting Instrument info from ledger")
 	}
 	var instrument Instrument
+	fmt.Println("Instruent Byte "+string(instbyte))
 	err = json.Unmarshal(instbyte, &instrument)		
 	if err != nil {
 		return nil, errors.New("Error while unmarshalling Instrument data")
