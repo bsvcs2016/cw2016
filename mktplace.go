@@ -448,7 +448,7 @@ func (t *SimpleChaincode) readTransaction(stub shim.ChaincodeStubInterface, args
 	if(err != nil){
 		return nil, errors.New("Error while unmarshalling transaction data")
 	}
-	
+	return valAsbytes, nil
 	bytes, err := stub.GetCallerCertificate();
 	if(err != nil){
 		return nil, errors.New("Error while getting caller certificate")
