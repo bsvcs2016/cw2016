@@ -1596,6 +1596,7 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		SettlementDate :args[6],
 		IssueDate	:args[7],
 		Callable	:args[8],
+		Status :"New Issue",
 		Owner : caller,
 		Issuer : caller,
 		}
