@@ -1676,7 +1676,14 @@ func (t *SimpleChaincode) updateInstrumentTradeHistory(stub shim.ChaincodeStubIn
 		if err != nil {
 			return  errors.New("Unable to Unmarshal Instrument")
 		}
-		inst.TradeID = append(inst.TradeID,TransactionID)
+		newTradeList := []string{}
+		newTradeList = append(newTradeList,TransactionID)
+		for _, v := range inst.TradeID {
+			if v != TransactionID {
+			newTradeList = append(newTradeList, v)
+			}
+		}
+		inst.TradeID = newTradeList
 		b , err := json.Marshal(inst)
 		if err != nil {
 			return  errors.New("Unable to marshal Instrument")
