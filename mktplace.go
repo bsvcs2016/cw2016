@@ -91,13 +91,13 @@ func main() {
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	// initialize Instruent	
 	instrument:= Instrument{		
-		Symbol :"TEST1",
+		Symbol :"ISSUE_90D_CALL",
 	Coupon :"BW",
 	Quantity :10000,
 	InstrumentPrice :100,
 	Rate :.1,
 	SettlementDate :"03/11/2017",
-	IssueDate	:"12/11/2016",
+	IssueDate	:"12/14/2016",
 	Callable	:"Yes",
 	Status :"New Issue",
 	Owner :"user_type1_1",
@@ -111,7 +111,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	
 	instrument1:= Instrument{		
-		Symbol :"TEST2",
+		Symbol :"ISSUE_90D_10BPS",
 	Coupon :"M",
 	Quantity :50000,
 	InstrumentPrice :50,
