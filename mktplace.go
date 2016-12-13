@@ -91,7 +91,7 @@ func main() {
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	// initialize Instruent	
 	instrument:= Instrument{		
-		Symbol :"ISU90D",
+		Symbol :"ISU90D10BPS",
 	Coupon :"BW",
 	Quantity :10000,
 	InstrumentPrice :100,
@@ -111,7 +111,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	
 	instrument1:= Instrument{		
-		Symbol :"ISU120CALL",
+		Symbol :"ISU120DCALL",
 	Coupon :"M",
 	Quantity :50000,
 	InstrumentPrice :50,
@@ -136,8 +136,8 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		EntityType: "Issuer",
 		Balance : 1000000.00,
 	}
-	client.Instruments = append(client.Instruments,"TEST1")
-	client.Instruments = append(client.Instruments,"TEST2")
+	client.Instruments = append(client.Instruments,"ISU90D10BPS")
+	client.Instruments = append(client.Instruments,"ISU120DCALL")
 	b, err = json.Marshal(client)
 	if err == nil {
         err = stub.PutState(client.EntityID,b)
