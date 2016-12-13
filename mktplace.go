@@ -91,7 +91,7 @@ func main() {
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	// initialize Instruent	
 	instrument:= Instrument{		
-		Symbol :"ISU90D10BPS",
+		Symbol :"ISU90D",
 	Coupon :"BW",
 	Quantity :10000,
 	InstrumentPrice :100,
@@ -111,7 +111,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	
 	instrument1:= Instrument{		
-		Symbol :"ISU90DCALL",
+		Symbol :"ISU120CALL",
 	Coupon :"M",
 	Quantity :50000,
 	InstrumentPrice :50,
