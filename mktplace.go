@@ -1278,8 +1278,17 @@ func updateInstrumentHistory(stub shim.ChaincodeStubInterface, entityID string, 
 		return errors.New("Error while unmarshalling entity data")
 	}
 	// add tradeID to history
-	entity.Instruments = append(entity.Instruments,issueID)
-
+	//entity.Instruments = append(entity.Instruments,issueID)
+	newInstrumeentList := []string{}
+	
+	for _, v := range entity.Instruments {
+			if v != issueID {
+		newInstrumeentList = append(newInstrumeentList, v)
+			}
+		}
+	newInstrumeentList = append(newInstrumeentList,issueID)
+	entity.Instruments = newInstrumeentList
+	
 	// write entity state to ledger
 	b, err := json.Marshal(entity)
 	if err == nil {
@@ -1677,12 +1686,13 @@ func (t *SimpleChaincode) updateInstrumentTradeHistory(stub shim.ChaincodeStubIn
 			return  errors.New("Unable to Unmarshal Instrument")
 		}
 		newTradeList := []string{}
-		newTradeList = append(newTradeList,TransactionID)
+		
 		for _, v := range inst.TradeID {
 			if v != TransactionID {
 			newTradeList = append(newTradeList, v)
 			}
 		}
+		newTradeList = append(newTradeList,TransactionID)
 		inst.TradeID = newTradeList
 		b , err := json.Marshal(inst)
 		if err != nil {
