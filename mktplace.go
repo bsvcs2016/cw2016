@@ -56,7 +56,7 @@ type Transaction struct{		// ledger transactions
 	Rate float64	
 	SettlementDate time.Time	
 	Status string
-	TimeStamp time.Time
+	TimeStamp string
 }
 
 type Trade struct				
@@ -551,7 +551,7 @@ func (t *SimpleChaincode) requestForIssue(stub shim.ChaincodeStubInterface, args
 		InstrumentPrice: instr.InstrumentPrice,
 		Rate: instr.Rate,
 		Status: "Success",
-		TimeStamp : time.Now(),
+		TimeStamp : time.Now().Format("2006-01-02 15:04:05"),
 		}
 		fmt.Println("Transaction")
 		//clientID = trn.FromUser
@@ -735,7 +735,7 @@ func (t *SimpleChaincode) respondToIssue(stub shim.ChaincodeStubInterface, args 
 		Rate: rfq.Rate,																// based on input
 		//SettlementDate: time.Date(year, month, day, 0, 0, 0, 0, time.UTC),				// based on input
 		Status: "Success",
-		TimeStamp : time.Now(),
+		TimeStamp : time.Now().Format("2006-01-02 15:04:05"),
 		}
 
 		// convert to JSON
