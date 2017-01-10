@@ -420,6 +420,8 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
         return t.getAllInstruments(stub, args)
 	}	else if function == "getAllInstrumentTrades" {
         return t.getAllInstrumentTrades(stub, args)
+	}	else if function == "getAllIoi" {
+        return t.getAllIoi(stub, args)
     }
 	fmt.Println("query did not find func: " + function)
     return nil, errors.New("Received unknown function query")
