@@ -41,6 +41,7 @@ type Entity struct{
 	Portfolio []Stock
 	Instruments []string
 	TradeHistory []string		// list of tradeIDs
+	IoiList []string
 	Balance float64
 }
 
@@ -69,12 +70,22 @@ type Trade struct
 	Status string				// "New Issue" or "Bank Response" or "Issuer Accepted" or "Pending Allocation" or "Trade timed out"
 }
 
+type Ioi struct				
+{
+	IoiId string				// ioi/rfq id
+	Notional float64
+	Tenor string
+	Bank string
+	TransactionHistory []string // transactions belonging to this Ioi
+	Status string				// "New" or "Responded" 
+	Symbol string
+	Owner  string
+}
+
 const entity1 = "user_type1_1" //issuer1
 const entity2 = "user_type1_2"  //issuer2
 const entity3 = "user_type1_3"  //bank1
 const entity4 = "user_type1_4"	//bank2
-const entity5 = "user_type2_0"  //bank3
-const entity6 = "user_type2_1"	//bank4
 const entity7 = "user_type2_2"	//Investor1
 const entity8 = "user_type2_3"  //investor2
 
@@ -183,31 +194,6 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, err
 	}
 	
-	bank3:= Entity{
-		EntityID: entity5,
-		EntityName:	"Bank 3",
-		EntityType: "Bank",
-		Balance : 100000000.00,
-	}
-	b, err = json.Marshal(bank3)
-	if err == nil {
-		err = stub.PutState(bank3.EntityID,b)
-    } else {
-		return nil, err
-	}
-	
-	bank4:= Entity{
-		EntityID: entity6,
-		EntityName:	"Bank 4",
-		EntityType: "Bank",
-		Balance : 100000000.00,
-	}
-	b, err = json.Marshal(bank4)
-	if err == nil {
-		err = stub.PutState(bank4.EntityID,b)
-    } else {
-		return nil, err
-	}
 	regBody:= Entity{
 		EntityID: entity9,
 		EntityName:	"Regulatory Body",
@@ -246,7 +232,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, err
 	}
 	
-	EntityList := []string{entity1,entity2, entity3, entity4,entity5,entity6, entity7, entity8, entity9}
+	EntityList := []string{entity1,entity2, entity3, entity4, entity7, entity8, entity9}
 
 	b, err = json.Marshal(EntityList)
 	if err == nil {
@@ -272,6 +258,25 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	ctidByte,err = stub.GetState("currentTradeNum")
 	if(err != nil){
 		return nil, errors.New("Error while getting currentTradeNum from ledger")
+	}
+	
+	// initialize Ioi num
+	byteVal, err = stub.GetState("currentIoiNum")
+	if len(byteVal) == 0 {
+		err = stub.PutState("currentIoiNum", []byte("1000"))
+	}
+	ctidByte,err = stub.GetState("currentIoiNum")
+	if(err != nil){
+		return nil, errors.New("Error while getting currentIoiNum from ledger")
+	}
+	// initialize Instrument num 
+	byteVal, err = stub.GetState("currentInstrumentNum")
+	if len(byteVal) == 0 {
+		err = stub.PutState("currentInstrumentNum", []byte("1000"))
+	}
+	ctidByte,err = stub.GetState("currentInstrumentNum")
+	if(err != nil){
+		return nil, errors.New("Error while getting currentInstrumentNum from ledger")
 	}
     return ctidByte, nil
 }
@@ -379,6 +384,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
         return t.payCoupon(stub, args)
 	} else if function == "issueCallout" {
         return t.issueCallout(stub, args)
+	} else if function == "raiseIoi" {
+        return t.requestForInstrument(stub, args)
     } 
     fmt.Println("invoke did not find func: " + function)
     return nil, errors.New("Received unknown function invocation")
@@ -1555,59 +1562,69 @@ func (t *SimpleChaincode) getTransactionStatus(stub shim.ChaincodeStubInterface,
 
 // User by Issuer to Create new Issue in the Ledger
 /*			arg 0 	: login user id
-			arg 1	:	Symbol
+			arg 1	:	IOI ID
 			arg 2	:	Coupon
-			arg 3	:	Quantity
-			arg 4 	:	Rate
-			arg 5	:	Price
-			arg 6	:	Maturity date
-			arg	7	:	Issue Date
-			arg 8	:	Callable
+			arg 3 	:	Rate
+			arg 4	:	Price
+			arg 5	:	Maturity date
+			arg	6	:	Issue Date
+			arg 7	:	Callable
+
 */
 func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	//Need all parameters for the Bond Instrument
-	if len(args)== 9{
+	if len(args)== 8{
 		caller := args[0]
-		// Check if the Symbol Id already exists
-		_, err := stub.GetState(args[1])
+		// Check if the IOI Id already exists
+		Ioibyte, err := stub.GetState(args[1])
 		if err != nil {
 			return nil, errors.New("Instrument with this ID already Exists, Try a different Name")
 		}
-		
-		//return nil, errors.New("Symbol")
-		fmt.Printf("Symbol: Arguments %s", args[1]);
-		stub.PutState("Test",[]byte("1000"))
-		
-		
-		q,err := strconv.Atoi(args[3])  // Quantity
-		if err != nil {
-			return nil, errors.New("Error while converting quantity to integer")
-			 
+		var vioi Ioi
+		err = json.Unmarshal(Ioibyte, &vioi)
+		if err != nil{
+			return nil, errors.New("Error while unmarshalling IOI record")
 		}
-		r,err := strconv.ParseFloat(args[4],64)  // Rate
+		
+		p,err := strconv.ParseFloat(args[4],64)  // Price
 		if err != nil {
-			return nil,errors.New( "Error while converting quantity to integer")
+			return nil,errors.New( "Error while converting Price to integer")
 			
 		}
-		p,err := strconv.ParseFloat(args[5],64)  // Price
+		issuer := vioi.Owner
+		quantity := vioi.Notional/p
+
+
+		r,err := strconv.ParseFloat(args[3],64)  // Rate
 		if err != nil {
-			return nil,errors.New( "Error while converting quantity to integer")
-			
+			return nil,errors.New( "Error while converting Rate to integer")
+		
 		}
+
+		ctidByte1,err1 := stub.GetState("currentInstrumentNum")
+		if(err1 != nil){
+			return nil, errors.New("Error while getting currentInstrumentNum from ledger")
+		}
+		instid,err := strconv.Atoi(string(ctidByte1))
+		if(err != nil){
+			return nil, errors.New("Error while converting ctidByte to integer")
+		}
+		instid = instid + 1
+		instrumentID := "inst"+strconv.Itoa(instid)
 		
 		// convert to Instrument to JSON
 		inst := Instrument {
-		Symbol :args[1],
+		Symbol :instrumentID,
 		Coupon :args[2],
-		Quantity :q,
+		Quantity :int(quantity),
 		InstrumentPrice :p,
 		Rate :r,
-		SettlementDate :args[6],
-		IssueDate	:args[7],
-		Callable	:args[8],
-		Status :"New Issue",
+		SettlementDate :args[5],
+		IssueDate	:args[6],
+		Callable	:args[7],
+		Status :"Published to Bank",
 		Owner : caller,
-		Issuer : caller,
+		Issuer : vioi.Owner,
 		}
 		
 		b, err := json.Marshal(inst)
@@ -1626,6 +1643,68 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol)
 		}	
 		
+		ctidByte1,err1 = stub.GetState("currentTransactionNum")
+		if(err1 != nil){
+			return nil, errors.New("Error while getting currentTransactionNum from ledger")
+		}
+		tid,err := strconv.Atoi(string(ctidByte1))
+		if(err != nil){
+			return nil, errors.New("Error while converting ctidByte to integer")
+		}
+		tid = tid + 1
+		transactionID := "trans"+strconv.Itoa(tid)
+		
+		tr := Transaction {
+		TransactionID: transactionID,
+		TransactionType: "Create Instrument",
+		FromUser:	caller,														// 
+		ToUser: issuer,  
+		//SettlementDate: time.Date(year, month, day, 0, 0, 0, 0, time.UTC),				// based on input
+		Status: "Success",
+		Symbol:instrumentID,
+		TimeStamp : time.Now().Format("2006-01-02 15:04:05"),
+		}
+
+		// convert to JSON
+		b, err = json.Marshal(tr)
+		
+		// write to ledger
+		if err == nil {
+			err = stub.PutState(tr.TransactionID,b)
+			if err != nil {
+				_ = updateTransactionStatus(stub, transactionID, "Error while writing Response transaction to ledger")
+				return nil, nil
+			}
+		} else {
+			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling transaction data")
+			return nil, nil
+		}
+		
+		err = stub.PutState("currentInstrumentNum", []byte(strconv.Itoa(instid)))
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while writing current IOI Number to ledger")
+			return nil, nil
+		}
+		err = stub.PutState("currentTransactionNum", []byte(strconv.Itoa(tid)))
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while writing current Transaction Number to ledger")
+			return nil, nil
+		}
+		// add Transaction ID to entity's trade history
+		err = updateTradeHistory(stub, tr.ToUser, tr.TransactionID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
+			return nil, nil
+		}	
+		// add Transaction ID to entity's trade history
+		err = updateTradeHistory(stub, tr.FromUser, tr.TransactionID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history for Issuer")
+			return nil, nil
+		}
+
+
+
 		return []byte(inst.Symbol), nil
 	}
 	return nil, errors.New("Incorrect number of arguments")
@@ -1993,4 +2072,133 @@ func (t *SimpleChaincode) issueCallout(stub shim.ChaincodeStubInterface, args []
 			return  nil,errors.New("Error while updating entity data")
 		}
 		return  nil,nil
+}
+
+/*  RequestForInstrument
+		args 0: Calling User id
+		args 1: Bank Id
+		args 2: Notional
+		args 3: Tenor
+*/
+func (t *SimpleChaincode) requestForInstrument(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	if len(args)== 4 {
+		caller := args[0]
+		bank := args[1]
+		notional, err := strconv.ParseFloat(args[2], 64)
+		tenor := args[3]
+		
+		quoteByte, err := stub.GetState("currentIoiNum")
+		if err != nil {
+			return nil,errors.New("Unable to find current Rfq number")
+		}
+		
+		qtid,err := strconv.Atoi(string(quoteByte))
+		if(err != nil){
+			return nil, errors.New("Error while converting quoteByte to integer")
+		}
+		qtid = qtid + 1
+		IoiID := "IOI"+strconv.Itoa(qtid)
+		
+		ctidByte1,err1 := stub.GetState("currentTransactionNum")
+		if(err1 != nil){
+			return nil, errors.New("Error while getting currentTransactionNum from ledger")
+		}
+		tid,err := strconv.Atoi(string(ctidByte1))
+		if(err != nil){
+			return nil, errors.New("Error while converting ctidByte to integer")
+		}
+		tid = tid + 1
+		transactionID := "trans"+strconv.Itoa(tid)
+		
+		
+		// get bank's enrollment id
+		bytes, err := stub.GetCallerCertificate();
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while getting caller certificate")
+			return nil, nil
+		}
+		x509Cert, err := x509.ParseCertificate(bytes);
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while parsing caller certificate")
+			return nil, nil
+		}		
+		fmt.Println("Create IOI : x509Cert"+x509Cert.Subject.CommonName)
+		
+		ioi := Ioi {
+		IoiId:IoiID, 				// ioi/rfq id
+		Notional:notional, 
+		Tenor:tenor,
+		Bank:bank,
+		Status:"New IOI", 				// "New" or "Responded" 
+		Owner:caller,
+
+		}
+		
+		ioi.TransactionHistory = append(ioi.TransactionHistory,transactionID)
+		d, err := json.Marshal(ioi)
+
+		// write to ledger
+		if err == nil {
+			err = stub.PutState(ioi.IoiId,d)
+			if err != nil {
+				return nil, errors.New("Error while writing Response transaction to ledger")
+			}
+		} else {
+			return nil, errors.New("Error while unMarshalling Response Ioi to ledger")
+
+		}
+		
+		tr := Transaction {
+		TransactionID: transactionID,
+		TransactionType: "New IOI",
+		FromUser:	caller,														// 
+		ToUser: bank,  //x509Cert.Subject.CommonName,											// 
+		//SettlementDate: time.Date(year, month, day, 0, 0, 0, 0, time.UTC),				// based on input
+		Status: "Success",
+		Symbol:IoiID,
+		TimeStamp : time.Now().Format("2006-01-02 15:04:05"),
+		}
+
+		// convert to JSON
+		b, err := json.Marshal(tr)
+		
+		// write to ledger
+		if err == nil {
+			err = stub.PutState(tr.TransactionID,b)
+			if err != nil {
+				_ = updateTransactionStatus(stub, transactionID, "Error while writing Response transaction to ledger")
+				return nil, nil
+			}
+		} else {
+			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling transaction data")
+			return nil, nil
+		}
+		
+		err = stub.PutState("currentIoiNum", []byte(strconv.Itoa(qtid)))
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while writing current IOI Number to ledger")
+			return nil, nil
+		}
+		err = stub.PutState("currentTransactionNum", []byte(strconv.Itoa(tid)))
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while writing current Transaction Number to ledger")
+			return nil, nil
+		}
+		
+		
+		// add Transaction ID to entity's trade history
+		err = updateTradeHistory(stub, tr.ToUser, tr.TransactionID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
+			return nil, nil
+		}	
+		// add Transaction ID to entity's trade history
+		err = updateTradeHistory(stub, tr.FromUser, tr.TransactionID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history for Issuer")
+			return nil, nil
+		}
+		return nil, nil
+	}
+	return nil, errors.New("Incorrect number of arguments")
 }
