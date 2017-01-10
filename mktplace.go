@@ -1614,7 +1614,7 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 			return nil, errors.New("Error while converting ctidByte to integer")
 		}
 		instid = instid + 1
-		instrumentID := "inst"+strconv.Itoa(instid)
+		instrumentID := "INST"+strconv.Itoa(instid)
 		
 		// convert to Instrument to JSON
 		inst := Instrument {
@@ -1626,7 +1626,7 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		SettlementDate :args[5],
 		IssueDate	:args[6],
 		Callable	:args[7],
-		Status :"Published to Bank",
+		Status :"PublishedToBank",
 		Owner : caller,
 		Issuer : vioi.Owner,
 		}
@@ -1646,6 +1646,11 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		if err != nil {
 			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol)
 		}	
+		// add Symbol ID to entity's Instrument List
+		err = updateInstrumentHistory(stub, issuer,inst.Symbol)
+		if err != nil {
+			return nil, errors.New( "Error while updating Instrument History : Caller : "+caller+" :"+inst.Symbol)
+		}
 		
 		ctidByte1,err1 = stub.GetState("currentTransactionNum")
 		if(err1 != nil){
@@ -1724,6 +1729,16 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 			return nil, nil
 		}
 
+		commission := float64(quantity)*inst.InstrumentPrice*.001
+		price := float64(quantity)*inst.InstrumentPrice
+		err = t.updateEntityBalance(stub,caller, -1*(price - commission))   //Caller
+		if err != nil {
+				return nil, errors.New(err.Error())
+		}
+		err = t.updateEntityBalance(stub,issuer, (price - commission))   //Client
+		if err != nil {
+				return nil, errors.New(err.Error())
+		}
 
 		return []byte(inst.Symbol), nil
 	}
