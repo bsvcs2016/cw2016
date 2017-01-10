@@ -1702,7 +1702,23 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history for Issuer")
 			return nil, nil
 		}
-
+		vioi.Status="Responded"
+		vioi.Symbol=instrumentID
+		vioi.TransactionHistory=append(vioi.TransactionHistory, transactionID)
+		// convert to JSON
+		b, err = json.Marshal(vioi)
+		
+		// write to ledger
+		if err == nil {
+			err = stub.PutState(vioi.IoiId,b)
+			if err != nil {
+				_ = updateTransactionStatus(stub, transactionID, "Error while writing Response transaction to ledger")
+				return nil, nil
+			}
+		} else {
+			_ = updateTransactionStatus(stub, transactionID, "Error while marshalling IOI data")
+			return nil, nil
+		}
 
 
 		return []byte(inst.Symbol), nil
@@ -2198,7 +2214,104 @@ func (t *SimpleChaincode) requestForInstrument(stub shim.ChaincodeStubInterface,
 			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history for Issuer")
 			return nil, nil
 		}
+		// add IOI ID to entity's  history
+		err = updateIOIHistory(stub, tr.ToUser, IoiID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
+			return nil, nil
+		}	
+		// add IOI ID to entity's  history
+		err = updateIOIHistory(stub, tr.FromUser, IoiID)
+		if err != nil {
+			_ = updateTransactionStatus(stub, transactionID, "Error while updating trade history")
+			return nil, nil
+		}	
+		
 		return nil, nil
 	}
 	return nil, errors.New("Incorrect number of arguments")
+}
+
+func updateIOIHistory(stub shim.ChaincodeStubInterface, entityID string, IOIID string) (error) {
+	// read entity state
+	entitybyte,err := stub.GetState(entityID)																										
+	if err != nil {
+		return errors.New("Error while getting entity info from ledger")
+	}
+	var entity Entity
+	err = json.Unmarshal(entitybyte, &entity)		
+	if err != nil {
+		return errors.New("Error while unmarshalling entity data")
+	}
+	// add IOIID to history
+	entity.IoiList = append(entity.IoiList,IOIID)
+	// write entity state to ledger
+	b, err := json.Marshal(entity)
+	if err == nil {
+		err = stub.PutState(entity.EntityID,b)
+	} else {
+		return errors.New("Error while updating entity status")
+	}
+	return nil
+}
+
+func (t *SimpleChaincode) getAllIoi(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+/*
+	args 0 : Entity
+*/
+	// check entity type
+	entitybyte,err := stub.GetState(args[0])																									
+	if err != nil {
+		return nil, errors.New("Error while getting entity info from ledger")
+	}
+	var entity Entity
+	err = json.Unmarshal(entitybyte, &entity)		
+	if err != nil {
+		return nil, errors.New("Error while unmarshalling entity data")
+	}
+	fmt.Println("Status and Entity" + args[1])
+	status := args[1]
+	//if entity.EntityType == "RegBody" {		
+	instruments := make([]Instrument,len(entity.Instruments))
+	var instrumentArray []Instrument //:= make([]Instrument,1)
+
+		for i:=0; i<len(entity.Instruments); i++ {
+			byteVal,err := stub.GetState(entity.Instruments[i])
+			if err != nil {
+				return nil, errors.New("Error while getting Instrument info from ledger")
+			}
+			fmt.Println("Bytevalue of Instruent and Entity" + string(byteVal))
+			
+			err = json.Unmarshal(byteVal, &instruments[i])	
+			if err != nil {
+				return nil, errors.New("Error while unmarshalling trades")
+			}
+			if entity.EntityType =="Issuer" && status =="Outstanding" && instruments[i].Status != "New Issue"{
+			
+				instrumentArray = append(instrumentArray,instruments[i])
+				
+			}else if entity.EntityType =="Bank" && status =="Outstanding" && instruments[i].Status != "PublishToBank"{
+					instrumentArray = append(instrumentArray,instruments[i])
+					
+			}else if entity.EntityType =="Investor" && status =="Outstanding" && instruments[i].Status != "PublishToInvestor"{
+					instrumentArray = append(instrumentArray,instruments[i])
+					
+			}else if instruments[i].Status == status{
+			
+				instrumentArray = append(instrumentArray,instruments[i])
+			
+			}else {
+			 fmt.Println("status" + status + " -" +instruments[i].Status )
+			}
+		}
+		
+		if status == "All" {
+			instrumentArray = instruments
+		}
+		b, err := json.Marshal(instrumentArray)
+		if err != nil {
+			return nil, errors.New("Error while marshalling trades")
+		}
+		return b, nil
+
 }
