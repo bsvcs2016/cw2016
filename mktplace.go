@@ -386,7 +386,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
         return t.payCoupon(stub, args)
 	} else if function == "issueCallout" {
         return t.issueCallout(stub, args)
-	} else if function == "raiseIoi" {
+	} else if function == "requestForInstrument" {
         return t.requestForInstrument(stub, args)
     } 
     fmt.Println("invoke did not find func: " + function)
@@ -414,6 +414,8 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
         return t.getAllTrades(stub, args)
     }	else if function == "getEntityList" {
         return t.getEntityList(stub, args)
+	}	else if function == "getEntities" {
+        return t.getEntities(stub, args)
     }	else if function == "getTransactionStatus" {
         return t.getTransactionStatus(stub, args)
 	}	else if function == "getInstrument" {
@@ -1500,6 +1502,40 @@ func (t *SimpleChaincode) getEntityList(stub shim.ChaincodeStubInterface, args [
 		}
 	}
 	b, err := json.Marshal(entities)
+	return b, nil
+}
+func (t *SimpleChaincode) getEntities(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+	var allEntities []string
+	//var entities []string
+	// get current Trade number
+	ctidByte, err := stub.GetState("entityList")
+	if(err != nil){
+		return nil, errors.New("Error while getting entity list from ledger")
+	}
+	err = json.Unmarshal(ctidByte, &allEntities)		
+	if(err != nil){
+		return nil, errors.New("Error while unmarshalling entity data")
+	}
+	// check all entities
+	entities := make([]Entity,len(allEntities))
+
+	for i:=0; i< len(allEntities); i++ {
+		// read trade state
+		entityByte,err := stub.GetState(allEntities[i])
+		if err != nil {
+			return nil, errors.New("Error while getting entity info from ledger")
+		}
+		//var entity Entity
+		err = json.Unmarshal(entityByte, &entities[i])		
+		if err != nil {
+			return nil, errors.New("Error while unmarshalling entity data")
+		}
+		
+	}
+	b, err := json.Marshal(entities)
+		if err != nil {
+			return nil, errors.New("Error while marshalling entities")
+		}
 	return b, nil
 }
 func (t *SimpleChaincode) getAllTrades(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
