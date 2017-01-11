@@ -145,7 +145,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	// initialize entities	
 	client:= Entity{		
 		EntityID: entity1,	  
-		EntityName:	"Issuer A",
+		EntityName:	"ZocDoc",
 		EntityType: "Issuer",
 		Balance : 50000000.00,
 	}
@@ -160,7 +160,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	
 	client2:= Entity{		
 		EntityID: entity2,	  
-		EntityName:	"Issuer B",
+		EntityName:	"Uber",
 		EntityType: "Issuer",
 		Balance : 50000000.00,
 	}
@@ -173,7 +173,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	
 	bank1:= Entity{
 		EntityID: entity3,
-		EntityName:	"Bank A",
+		EntityName:	"Bank Of America",
 		EntityType: "Bank",
 		Balance : 100000000.00,
 	}
@@ -185,7 +185,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 	bank2:= Entity{
 		EntityID: entity4,
-		EntityName:	"Bank B",
+		EntityName:	"Barclays",
 		EntityType: "Bank",
 		Balance : 100000000.00,
 	}
@@ -198,7 +198,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	
 	regBody:= Entity{
 		EntityID: entity9,
-		EntityName:	"Regulatory Body",
+		EntityName:	"SEC",
 		EntityType: "RegBody",
 	}
 	b, err = json.Marshal(regBody)
@@ -210,7 +210,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	
 	inv1:= Entity{
 		EntityID: entity7,
-		EntityName:	"Investor 1",
+		EntityName:	"Fidelity",
 		EntityType: "Investor",
 		Balance : 200000000.00,
 	}
@@ -223,7 +223,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	
 	inv2:= Entity{
 		EntityID: entity8,
-		EntityName:	"Investor 2",
+		EntityName:	"BlackRock",
 		EntityType: "Investor",
 		Balance : 200000000.00,
 	}
