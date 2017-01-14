@@ -1775,6 +1775,10 @@ func (t *SimpleChaincode) createIssue(stub shim.ChaincodeStubInterface, args []s
 		if err != nil {
 				return nil, errors.New(err.Error())
 		}
+		err =t.updateInstrumentTradeHistory(stub, inst.Symbol, transactionID)
+		if err != nil {
+				return nil, errors.New(err.Error())
+		}
 
 		return []byte(inst.Symbol), nil
 	}
