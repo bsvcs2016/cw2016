@@ -1962,10 +1962,14 @@ func (t *SimpleChaincode) getAllInstrumentTrades(stub shim.ChaincodeStubInterfac
 
 			}
 		}
+		
+		fmt.Println("Entity Type "+entity.EntityType)
 		if entity.EntityType =="RegBody"{
 			tradesArray = trades
 		}
 		b, err := json.Marshal(tradesArray)
+		fmt.Println("Trades List "+string(b))
+		
 		if err != nil {
 			return nil, errors.New("Error while marshalling Transacations")
 		}
